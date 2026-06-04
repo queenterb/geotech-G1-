@@ -2,3 +2,5 @@ numpy
 psutil
 aiohttp
 torch
+Flask
+pytest
