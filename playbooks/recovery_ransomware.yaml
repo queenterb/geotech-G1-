@@ -1,0 +1,24 @@
+---
+id: recovery-ransomware-001
+name: Ransomware Recovery Workflow
+description: |
+  Recovery playbook that uses digital twin snapshots to validate and restore a host
+  to a known-good state after ransomware detection.
+triggers:
+  - alert_type: ransomware-write-spike
+    min_severity: high
+actions:
+  - type: snapshot_pre
+    name: pre-recovery-{{change_id}}
+  - type: isolate_network
+    duration_minutes: 60
+    reason: "Quarantine before recovery"
+  - type: validate_backup
+    description: "Check last known-good snapshot availability"
+  - type: restore_snapshot
+    name: last-known-good
+  - type: snapshot_post
+    name: post-recovery-{{change_id}}
+  - type: notify
+    method: email
+    to: security-team@example.com

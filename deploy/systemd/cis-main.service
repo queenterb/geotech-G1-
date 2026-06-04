@@ -1,0 +1,31 @@
+[Unit]
+Description=CIS Main Detection Engine
+After=cis-ebpf-loader.service cis-sidechannel.service cis-digital-twin.service
+Requires=cis-ebpf-loader.service cis-sidechannel.service cis-digital-twin.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/cis
+ExecStart=/usr/bin/python3 /opt/cis/main_detector.py
+Restart=always
+RestartSec=5
+User=cis
+Group=cis
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+ReadWritePaths=/tmp /var/log/cis /opt/cis/models
+
+[Install]
+WantedBy=multi-user.target

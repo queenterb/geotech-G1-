@@ -1,0 +1,12 @@
+source,description,collector,ingest_endpoint,notes
+eBPF (file syscalls),Kernel-space hooks for file operations,EBpfCollector (cis/main_detector.py),Unix socket `/tmp/cis_ebpf_events.sock` or TCP `127.0.0.1:9999`,`ebpf/ransomware_detector.bpf.c` + `ebpf/Makefile` present
+Side-channel (power/acoustic/thermal),Host-side power/temp/acoustic sampling,SideChannelAcquirer (cis/side_channel_daemon.py),Internal queue in process,Uses psutil fallback; RAPL/audio optional
+Syslog/journald,System and app logs via rsyslog/journald,rsyslog/forwarder,File or syslog TCP/UDP,Production guide references rsyslog in `PRODUCTION_DEPLOYMENT_GUIDE.md`
+Datadog agent,Host metrics and traces,Datadog Agent,Datadog intake (HTTPS),Install steps in `PRODUCTION_DEPLOYMENT_GUIDE.md`
+Application logs,Python app logs (cis/*, dashboard),App logger (RotatingFileHandler),Log files (see config),Forward to SIEM via `siem_log_file` or HTTP
+Container logs,Docker/container stdout/stderr,Container logging driver,Stdout or centralized collector,Consider `docker logs` or Fluentd/Fluent Bit
+Network telemetry,Netflow/pcap/tcpdump,Packet capture agent,PCAP files or netflow exporter,Not yet implemented — planned
+Cloud logs,Cloud provider audit & flow logs,Cloud-native collectors (CloudWatch/Stackdriver),Cloud API endpoints,Planned — add STS roles and ingestion connectors
+OT/ICS sensors,Modbus/OPC-UA sensor telemetry,OT gateway adapters,OPC/Modbus endpoints,Planned — requires protocol adapters and gateway
+Third-party threat feeds,STIX/TAXII,Threat-intel ingestion service,STIX/TAXII endpoints,Integrate with `threat-intel` module (planned)
+Payment/billing events,Billing API events (stripe),`stripe_integration.py`,Webhook endpoints,Useful for correlation of suspicious billing activity

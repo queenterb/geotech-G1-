@@ -1,0 +1,16 @@
+[
+  {
+    "name": "High Encryption",
+    "field": "current_encryption",
+    "op": ">",
+    "value": 0.0,
+    "action": "alert"
+  },
+  {
+    "name": "Many Modified Files",
+    "field": "modified_files_count",
+    "op": ">",
+    "value": 0,
+    "action": "alert"
+  }
+]

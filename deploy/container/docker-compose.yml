@@ -1,0 +1,38 @@
+version: "3.9"
+services:
+  cis-main:
+    build:
+      context: ../../
+      dockerfile: deploy/container/Dockerfile
+    container_name: cis-main
+    network_mode: host
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - /tmp:/tmp
+    command: [ "python", "main_detector.py" ]
+
+  cis-sidechannel:
+    build:
+      context: ../../
+      dockerfile: deploy/container/Dockerfile
+    container_name: cis-sidechannel
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    devices:
+      - /dev/snd:/dev/snd
+    command: [ "python", "side_channel_daemon.py" ]

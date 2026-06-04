@@ -1,0 +1,15 @@
+[Unit]
+Description=CIS eBPF Event Collector
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/detector_loader
+Restart=always
+RestartSec=5
+User=root
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

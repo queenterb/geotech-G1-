@@ -1,0 +1,10 @@
+[Unit]
+Description=Run CIS Health Check every minute
+
+[Timer]
+OnCalendar=*:0/1
+Persistent=true
+Unit=cis-health.service
+
+[Install]
+WantedBy=timers.target

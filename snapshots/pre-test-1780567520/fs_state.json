@@ -1,0 +1,7 @@
+{
+  "files": [
+    "/etc/passwd",
+    "/var/log/app.log"
+  ],
+  "note": "simulated state"
+}

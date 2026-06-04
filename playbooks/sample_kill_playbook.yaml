@@ -1,0 +1,22 @@
+---
+id: sample-kill-001
+name: Kill suspicious process and quarantine
+description: |
+  Prototype playbook to kill a suspicious PID and quarantine host network access.
+triggers:
+  - alert_type: ransomware-write-spike
+    min_severity: high
+actions:
+  - type: snapshot_pre
+    name: pre-kill-{{change_id}}
+  - type: kill_process
+    pid: '{{pid}}'
+    reason: 'Automated remediation: suspected encryption process'
+  - type: isolate_network
+    duration_minutes: 30
+    reason: 'Quarantine host pending investigation'
+  - type: snapshot_post
+    name: post-kill-{{change_id}}
+  - type: notify
+    method: email
+    to: security-team@example.com

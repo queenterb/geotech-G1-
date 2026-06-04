@@ -1,0 +1,23 @@
+version: "3.9"
+services:
+  cis-main:
+    build:
+      context: ../../
+      dockerfile: deploy/container/Dockerfile
+    container_name: cis-main
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - /tmp:/tmp
+      - /var/log/cis:/var/log/cis
+    command: ["python", "main_detector.py"]
+
+  cis-sidechannel:
+    build:
+      context: ../../
+      dockerfile: deploy/container/Dockerfile
+    container_name: cis-sidechannel
+    restart: unless-stopped
+    devices:
+      - /dev/snd:/dev/snd
+    command: ["python", "side_channel_daemon.py"]

@@ -1,0 +1,32 @@
+[Unit]
+Description=CIS Digital Twin Controller
+After=network.target
+Before=cis-main.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/cis
+ExecStart=/usr/bin/python3 /opt/cis/digital_twin_controller.py
+Restart=always
+RestartSec=5
+User=cis
+Group=cis
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+ReadWritePaths=/tmp /var/log/cis
+DeviceAllow=/dev/kvm rw
+
+[Install]
+WantedBy=multi-user.target

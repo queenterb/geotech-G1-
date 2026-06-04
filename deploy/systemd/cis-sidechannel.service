@@ -1,0 +1,31 @@
+[Unit]
+Description=CIS Side-Channel Acquirer
+After=network.target
+Before=cis-main.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/cis
+ExecStart=/usr/bin/python3 /opt/cis/side_channel_daemon.py
+Restart=always
+RestartSec=5
+User=cis
+Group=cis
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+ReadWritePaths=/tmp /var/log/cis
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,30 @@
+{
+    "ebpf_socket_path": "/tmp/cis_ebpf_events.sock",
+    "snapshot_interval": 5.0,
+    "prediction_window": 5.0,
+    "divergence_threshold": 0.35,
+    "heuristic_write_threshold": 120,
+    "counterfactual_lookback_ms": 50,
+    "encryption_threshold": 0.3,
+    "model_path": "models/lstm_gnn_scripted.pt",
+    "alerts_file": "cis/cis_alerts.jsonl",
+    "status_file": "cis/cis_status.json",
+    "heartbeat_file": "cis/cis_heartbeat",
+    "immune_memory_path": "models/immune_memory.pkl",
+    "log_file": "cis/cis_main.log",
+    "log_max_bytes": 5000000,
+    "log_backup_count": 5
+    "smtp_server": "smtp.example.com",
+    "smtp_port": 587,
+    "smtp_user": "your_email@example.com",
+    "smtp_password": "your_email_password",
+    "alert_email_to": "recipient@example.com",
+    "alert_email_from": "your_email@example.com",
+    "policy": {
+        "divergence_threshold": 0.35,
+        "encryption_threshold": 0.3,
+        "heuristic_write_threshold": 120,
+        "auto_isolate": true,
+        "auto_rollback": true
+    }
+}

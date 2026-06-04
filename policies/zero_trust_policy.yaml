@@ -1,0 +1,34 @@
+policies:
+  - id: deny-high-risk
+    description: Deny access for very high user risk or non-compliant device
+    priority: 10
+    conditions:
+      - field: user_risk_score
+        op: gt
+        value: 0.8
+      - field: device_compliance
+        op: eq
+        value: False
+    # For prototype, decision will be deny if all conditions match
+    decision: deny
+
+  - id: challenge-medium-risk
+    description: Challenge with MFA for medium risk
+    priority: 20
+    conditions:
+      - field: user_risk_score
+        op: gt
+        value: 0.5
+    decision: challenge
+
+  - id: allow-low-risk
+    description: Allow when device compliant and user risk low
+    priority: 30
+    conditions:
+      - field: device_compliance
+        op: eq
+        value: True
+      - field: user_risk_score
+        op: lt
+        value: 0.3
+    decision: allow

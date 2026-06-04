@@ -1,0 +1,1 @@
+{"decoy_id": "decoy-test-1", "kind": "file", "actor_ip": "203.0.113.5", "timestamp": 1780567507.3191395, "details": {"path": "/var/secret/passwords.txt", "action": "read"}}

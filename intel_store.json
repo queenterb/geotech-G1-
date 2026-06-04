@@ -1,0 +1,17 @@
+[
+  {
+    "raw_pattern": "[file:path = '/tmp/malware.bin']",
+    "type": "file",
+    "value": "/tmp/malware.bin"
+  },
+  {
+    "raw_pattern": "[ipv4-addr:value = '10.0.0.5']",
+    "type": "ipv4",
+    "value": "10.0.0.5"
+  },
+  {
+    "raw_pattern": "[domain-name:value = 'bad.example.com']",
+    "type": "domain",
+    "value": "'bad.example.com'"
+  }
+]

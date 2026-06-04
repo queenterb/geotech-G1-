@@ -1,0 +1,21 @@
+mappings:
+  ransomware-write-spike:
+    - framework: NIST-CSF
+      control: DE.CM-7
+      description: "Detection of anomalous activity indicating potential ransomware behavior"
+    - framework: ISO27001
+      control: A.12.4.1
+      description: "Logging and monitoring of system activities"
+
+  suspicious-ot-correlated:
+    - framework: NIST-CSF
+      control: ID.RA-1
+      description: "Asset vulnerability and risk assessments including OT/ICS"
+    - framework: IEC-62443
+      control: SR-2
+      description: "Detection of anomalous OT network behavior"
+
+  decoy-interaction:
+    - framework: NIST-CSF
+      control: DE.CM-8
+      description: "Deception and honeypot telemetry for attacker profiling"
