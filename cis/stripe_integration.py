@@ -1,7 +1,6 @@
 # Stripe Payment Integration for CIS
 import os
-import json
-from typing import Dict, Optional
+from typing import Dict
 from datetime import datetime
 
 # This would normally use: import stripe
@@ -11,6 +10,14 @@ STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "sk_test_placeholder")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "whsec_placeholder")
 
 PLANS = {
+    'free_trial': {
+        'name': 'Free Trial',
+        'price': 0,
+        'currency': 'usd',
+        'billing_period': 'trial',
+        'endpoints': 5,
+        'features': ['basic_detection', 'alerts', 'api_access']
+    },
     'pro': {
         'name': 'Pro',
         'price': 600,  # $6.00 per endpoint/month in cents
@@ -125,7 +132,7 @@ class StripePaymentProcessor:
 
         try:
             exp_month = int(payment_method.get('exp_month'))
-            exp_year = int(payment_method.get('exp_year'))
+            int(payment_method.get('exp_year'))
             cvc = str(payment_method.get('cvc'))
         except ValueError:
             raise StripeError('Invalid expiration date or CVC')

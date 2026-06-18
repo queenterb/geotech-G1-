@@ -12,7 +12,6 @@ import argparse
 import os
 import json
 import subprocess
-import time
 
 ROOT = os.path.dirname(__file__)
 SNAP_ROOT = os.path.join(ROOT, "..", "snapshots")

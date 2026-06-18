@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import yaml
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 POLICY_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "policies", "zero_trust_policy.yaml")
 

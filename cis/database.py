@@ -1,10 +1,8 @@
 # Database schema and initialization for CIS billing system
 import sqlite3
 import os
-import json
-import time
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 
 DB_PATH = os.path.expanduser("~/.cis_billing.db")
 

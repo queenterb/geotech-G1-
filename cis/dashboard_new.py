@@ -1,11 +1,8 @@
-from flask import Flask, render_template_string, jsonify, request, redirect, url_for, session
+from flask import Flask, render_template_string, jsonify, request, redirect, url_for
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask import Response
 import json
 import os
-import hashlib
 from functools import wraps
-from datetime import datetime
 
 try:
     from .billing_api import register_billing_routes
@@ -75,7 +72,7 @@ def require_license(f):
             return redirect(url_for('billing.trial_signup_page'))
         
         try:
-            license_info = check_license(current_user.subscription_id)
+            check_license(current_user.subscription_id)
             return f(*args, **kwargs)
         except LicenseError:
             return redirect(url_for('trial_expired'))
@@ -119,7 +116,7 @@ def login():
                 return redirect(url_for("dashboard"))
             else:
                 return render_template_string(LOGIN_TEMPLATE, error="Invalid email/username or password"), 401
-        except Exception as e:
+        except Exception:
             return render_template_string(LOGIN_TEMPLATE, error="Login error"), 500
     
     return render_template_string(LOGIN_TEMPLATE)
@@ -180,7 +177,7 @@ def billing():
 @login_required
 @require_license
 def security_intelligence():
-    subscription = get_user_subscription(current_user.id)
+    get_user_subscription(current_user.id)
     system_state = {
         'suspicious_ips': 3,
         'divergence': 1.9,
@@ -207,7 +204,7 @@ def security_intelligence():
 @login_required
 @require_license
 def self_healing():
-    subscription = get_user_subscription(current_user.id)
+    get_user_subscription(current_user.id)
     system_state = {
         'suspicious_ips': 3,
         'divergence': 1.9,

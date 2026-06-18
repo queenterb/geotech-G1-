@@ -29,8 +29,13 @@ Use `deploy/scripts/install_cis.sh` as root, then configure/build the eBPF loade
 The smoke test verifies model training, daemon startup, synthetic event flow, and alert output.
 
 ## Unit Tests
-From `cis/` run:
-- `python -m unittest discover -s tests -p "test_*.py"`
+From the repository root run:
+- `python -m unittest discover -s cis/tests -p "test_*.py" -v`
+
+Alternatively, from `cis/` run:
+- `python -m pytest tests -q`
+
+> Note: the tests use package imports from `cis`, so the discover path must include `cis/tests`.
 
 ## Hardening Applied
 - Strict event payload validation before queueing

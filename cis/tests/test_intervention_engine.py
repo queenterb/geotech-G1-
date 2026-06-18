@@ -1,8 +1,6 @@
-import os
-import signal
 import unittest
 
-from intervention_engine import InterventionEngine
+from cis.intervention_engine import InterventionEngine
 
 
 class TestInterventionEngine(unittest.TestCase):

@@ -126,7 +126,7 @@ class AuditLogger:
             date_str = filename.replace('audit-', '').replace('.jsonl', '')
             try:
                 file_date = datetime.fromisoformat(date_str)
-            except:
+            except Exception:
                 continue
             
             if file_date < start_date:
@@ -139,11 +139,10 @@ class AuditLogger:
                         entry = json.loads(line)
                         if entry['user_id'] == user_id:
                             activities.append(entry)
-                    except:
+                    except Exception:
                         continue
         
-        return sorted(activities, key=lambda x: x['timestamp'], reverse=True)
-    
+        
     @classmethod
     def get_audit_summary(cls, days: int = 30) -> Dict:
         """Get audit summary statistics."""

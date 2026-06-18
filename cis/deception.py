@@ -6,7 +6,6 @@ Decoys emit telemetry when interacted with to help profile attackers.
 from __future__ import annotations
 
 import time
-import threading
 import json
 import os
 from dataclasses import dataclass, field

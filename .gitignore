@@ -1,0 +1,19 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environment
+.venv/
+
+# Test artifacts and snapshots
+snapshots/
+
+# GitHub Actions cache
+.github/actions/cache/
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,20 +1,17 @@
 # Comprehensive Licensing and Trial Management for CIS
 import os
-import time
 import json
 from datetime import datetime
 from typing import Dict, Optional
 
 try:
     from .database import (
-        get_user_subscription, 
         check_trial_status, 
         get_subscription_by_id,
         register_endpoint
     )
 except ImportError:
     from database import (
-        get_user_subscription, 
         check_trial_status, 
         get_subscription_by_id,
         register_endpoint

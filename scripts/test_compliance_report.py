@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Test harness for compliance report generation."""
 import json
-import tempfile
 from cis.compliance import generate_report, load_mappings
 
 

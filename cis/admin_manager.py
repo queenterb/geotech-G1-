@@ -1,13 +1,11 @@
 # Admin Dashboard System for CIS Billing
-import os
-import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
 try:
-    from .database import get_db_connection, get_user_subscription
+    from .database import get_db_connection
 except ImportError:
-    from database import get_db_connection, get_user_subscription
+    from database import get_db_connection
 
 class AdminManager:
     """Manage admin operations and user accounts."""
@@ -178,7 +176,7 @@ class AdminManager:
         )
         
         # Log refund
-        refund_log = {
+        {
             'payment_id': payment_id,
             'reason': reason,
             'refunded_at': datetime.now().isoformat(),

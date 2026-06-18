@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from immune_memory import ImmuneMemory
+from cis.immune_memory import ImmuneMemory
 
 
 class TestImmuneMemory(unittest.TestCase):

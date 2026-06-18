@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Test IT-OT correlation using sample IT event and simulated OT events."""
 import json
-import os
-import sys
 from cis.correlation import correlate_it_ot
 from cis.ot_adapters import ModbusAdapter, OPCUAAdapter, normalize_ot_event
 

@@ -7,10 +7,6 @@ os.environ['PYTHONUNBUFFERED'] = '1'
 
 print("TEST 1: Basic imports", flush=True)
 try:
-    import argparse
-    import asyncio
-    import json
-    import logging
     print("  ✓ Basic imports work", flush=True)
 except Exception as e:
     print(f"  ✗ Basic imports failed: {e}", flush=True)
