@@ -110,7 +110,7 @@ def main():
     p_create = sub.add_parser("create")
     p_create.add_argument("name")
     p_create.add_argument("--desc", default="")
-    p_list = sub.add_parser("list")
+    sub.add_parser("list")
     p_validate = sub.add_parser("validate")
     p_validate.add_argument("name")
     p_rollback = sub.add_parser("rollback")

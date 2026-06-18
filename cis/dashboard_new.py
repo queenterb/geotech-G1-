@@ -72,7 +72,7 @@ def require_license(f):
             return redirect(url_for('billing.trial_signup_page'))
         
         try:
-            license_info = check_license(current_user.subscription_id)
+            check_license(current_user.subscription_id)
             return f(*args, **kwargs)
         except LicenseError:
             return redirect(url_for('trial_expired'))
@@ -177,7 +177,7 @@ def billing():
 @login_required
 @require_license
 def security_intelligence():
-    subscription = get_user_subscription(current_user.id)
+    get_user_subscription(current_user.id)
     system_state = {
         'suspicious_ips': 3,
         'divergence': 1.9,
@@ -204,7 +204,7 @@ def security_intelligence():
 @login_required
 @require_license
 def self_healing():
-    subscription = get_user_subscription(current_user.id)
+    get_user_subscription(current_user.id)
     system_state = {
         'suspicious_ips': 3,
         'divergence': 1.9,

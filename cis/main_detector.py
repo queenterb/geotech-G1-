@@ -470,7 +470,7 @@ class CISMain:
                     field = rule.get("field")
                     op = rule.get("op")
                     value = rule.get("value")
-                    action = rule.get("action", "alert")
+                    rule.get("action", "alert")
                     # Get the value from fs_state
                     field_value = getattr(self.fs_state, field, None)
                     if field_value is not None:
@@ -495,10 +495,10 @@ class CISMain:
             self._write_status(divergence=divergence, immune_alarm=immune_alarm, heuristic_alarm=heuristic_alarm)
 
             # Use policy overrides if present
-            divergence_threshold = self.policy.get("divergence_threshold", self.config["divergence_threshold"])
-            encryption_threshold = self.policy.get("encryption_threshold", self.config["encryption_threshold"])
-            heuristic_write_threshold = self.policy.get("heuristic_write_threshold", self.config["heuristic_write_threshold"])
-            auto_isolate_enabled = self.policy.get("auto_isolate", True)
+            self.policy.get("divergence_threshold", self.config["divergence_threshold"])
+            self.policy.get("encryption_threshold", self.config["encryption_threshold"])
+            self.policy.get("heuristic_write_threshold", self.config["heuristic_write_threshold"])
+            self.policy.get("auto_isolate", True)
             auto_rollback_enabled = self.policy.get("auto_rollback", True)
 
             # --- If a rule is triggered, fire alert ---
@@ -508,7 +508,6 @@ class CISMain:
                     lookback_ms=self.config["counterfactual_lookback_ms"],
                     ahead_sec=self.config["prediction_window"],
                 )
-                auto_isolate = auto_isolate_enabled and self.fs_state.encryption_indicator > encryption_threshold
                 rollback_needed = auto_rollback_enabled and self.fs_state.encryption_indicator > 0.7
                 intervention = self.intervention.intervene(
                     rule_triggered_pid,
@@ -666,7 +665,6 @@ class CISMain:
         rule_name: str = None,
     ):
         # Gather actionable context
-        user = None
         proc_name = None
         file_affected = None
         for e in self.events:

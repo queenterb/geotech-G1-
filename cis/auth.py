@@ -6,7 +6,7 @@ from typing import Dict, Optional, Tuple
 import re
 
 try:
-    from .database import create_trial_user, get_user_subscription
+    from .database import create_trial_user
 except ImportError:
     from database import create_trial_user
 

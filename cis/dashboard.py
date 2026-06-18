@@ -1,8 +1,10 @@
 from flask import Flask, render_template_string, jsonify, request, redirect, url_for
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask import Response
+from functools import wraps
 import json
 import os
+import time
 
 try:
     from .alert_explanation import annotate_alert
@@ -35,7 +37,6 @@ def load_user(user_id):
     return None
 
 # RBAC decorator
-from functools import wraps
 def roles_required(*roles):
     def decorator(f):
         @wraps(f)
@@ -122,7 +123,7 @@ def alert_stream():
                     alert = json.loads(line) if line.strip() else {}
                 yield f"data: {json.dumps(alert)}\n\n"
             last_len = len(lines)
-        import time; time.sleep(2)
+        time.sleep(2)
 
 @app.route("/stream/alerts")
 @login_required

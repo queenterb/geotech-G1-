@@ -13,18 +13,18 @@ OUT = Path(__file__).resolve().parents[0] / 'COMPLETE_SYSTEM_PRESENTATION.pptx'
 
 
 def slide_from_block(prs, block: str):
-    lines = [l.rstrip() for l in block.strip().splitlines() if l.strip()]
+    lines = [line.rstrip() for line in block.strip().splitlines() if line.strip()]
     if not lines:
         return
     # title is first line starting with '#'
     title = lines[0].lstrip('# ').strip() if lines[0].startswith('#') else 'Slide'
     body_lines = []
     notes = []
-    for l in lines[1:]:
-        if l.lower().startswith('speaker notes:') or l.lower().startswith('notes:'):
-            notes.append(l.split(':', 1)[1].strip())
+    for line in lines[1:]:
+        if line.lower().startswith('speaker notes:') or line.lower().startswith('notes:'):
+            notes.append(line.split(':', 1)[1].strip())
         else:
-            body_lines.append(l)
+            body_lines.append(line)
 
     slide_layout = prs.slide_layouts[1]  # Title and Content
     slide = prs.slides.add_slide(slide_layout)

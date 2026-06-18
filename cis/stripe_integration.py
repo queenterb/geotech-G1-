@@ -132,7 +132,7 @@ class StripePaymentProcessor:
 
         try:
             exp_month = int(payment_method.get('exp_month'))
-            exp_year = int(payment_method.get('exp_year'))
+            int(payment_method.get('exp_year'))
             cvc = str(payment_method.get('cvc'))
         except ValueError:
             raise StripeError('Invalid expiration date or CVC')

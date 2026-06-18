@@ -4,8 +4,8 @@ from functools import wraps
 from datetime import datetime
 
 try:
-    from .auth import register_free_trial, create_session_token, validate_session_token, ValidationError, AuthenticationError
-    from .license_check import check_license, LicenseError, TrialExpiredError, PlanLimitExceededError
+    from .auth import register_free_trial, create_session_token, ValidationError, AuthenticationError
+    from .license_check import check_license, LicenseError, PlanLimitExceededError
     from .stripe_integration import StripePaymentProcessor, StripeError, get_plan_pricing
     from .feature_gating import FeatureGate
     from .database import get_user_subscription, upgrade_subscription, register_endpoint
@@ -180,7 +180,7 @@ def upgrade_plan():
     
     try:
         processor = StripePaymentProcessor()
-        subscription = get_user_subscription(subscription_id)
+        get_user_subscription(subscription_id)
         
         customer_id = processor.create_customer(
             payment_method.get('email'),
@@ -202,7 +202,7 @@ def upgrade_plan():
         
         stripe_sub = processor.create_subscription(customer_id, plan, endpoints)
         
-        result = upgrade_subscription(
+        upgrade_subscription(
             subscription_id,
             plan,
             stripe_sub['subscription_id']
@@ -304,7 +304,7 @@ def check_feature():
 @billing_bp.route('/trial-signup', methods=['GET'])
 def trial_signup_page():
     """Free trial signup page."""
-    email = request.args.get('email', '')
+    request.args.get('email', '')
     return render_template_string('''
     <!DOCTYPE html>
     <html>

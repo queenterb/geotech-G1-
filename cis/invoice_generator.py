@@ -2,7 +2,7 @@
 import os
 import json
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 try:
     from .database import get_db_connection

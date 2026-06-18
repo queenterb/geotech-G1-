@@ -28,8 +28,8 @@ def main():
     if os.path.exists(tel_file):
         print("Telemetry lines:")
         with open(tel_file, "r", encoding="utf-8") as f:
-            for l in f:
-                print(json.dumps(json.loads(l), indent=2))
+            for line in f:
+                print(json.dumps(json.loads(line), indent=2))
     else:
         print("No telemetry file found at", tel_file)
 

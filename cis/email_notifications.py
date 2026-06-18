@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Dict
 
 try:
-    from .database import get_db_connection, get_user_subscription
+    from .database import get_db_connection
 except ImportError:
     from database import get_db_connection
 
