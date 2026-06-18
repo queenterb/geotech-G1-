@@ -147,7 +147,16 @@ For Linux:
 - Confirm the dashboard can fetch `/status` and `/alerts-json`.
 - Verify the login flow with active user accounts in the SQLite database.
 
-### 6.3 Known system checks
+### 6.3 Current validation status
+
+- Local dependency installation completed successfully via `cis/requirements.txt`.
+- `pytest -q` passed with all tests green.
+- `ruff check .` passed after auto-fixes and manual lint cleanup.
+- `test_startup.py` passed, validating imports and CIS runtime initialization.
+- CI-style validation scripts were executed successfully with `PYTHONPATH` set to the repository root.
+- The branch `feature/autonomous-cis` was pushed successfully and the active PR was updated.
+
+### 6.4 Known system checks
 
 - The dashboard now accepts either email or username for login.
 - If login still fails, confirm the account exists in `~/.cis_billing.db`.
