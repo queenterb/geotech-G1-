@@ -130,7 +130,6 @@ def stream_alerts():
     return Response(alert_stream(), mimetype="text/event-stream")
 
 
-import threading
 
 ACK_FILE = os.path.join(os.path.dirname(__file__), "acknowledged_alerts.json")
 def load_acknowledged():

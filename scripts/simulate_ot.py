@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Simulate OT events and write JSONL to stdout or file."""
-import time
 import json
 import argparse
 from cis.ot_adapters import ModbusAdapter, OPCUAAdapter, normalize_ot_event

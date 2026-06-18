@@ -1,7 +1,6 @@
 # Stripe Payment Integration for CIS
 import os
-import json
-from typing import Dict, Optional
+from typing import Dict
 from datetime import datetime
 
 # This would normally use: import stripe

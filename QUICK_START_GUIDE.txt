@@ -128,8 +128,9 @@ RUNNING TESTS
 ──────────────────────────────────────────────────────────────────────────────────
 
 Unit Tests (Cross-platform):
-  cd cis
-  python -m unittest discover -s tests -p "test_*.py" -v
+  python -m unittest discover -s cis/tests -p "test_*.py" -v
+
+  Note: this repo uses package imports from `cis`, so the test discovery path must be `cis/tests`.
 
 Expected Output:
   Running 7 tests...

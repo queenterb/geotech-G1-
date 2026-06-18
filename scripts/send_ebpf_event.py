@@ -3,7 +3,6 @@
 import json
 import os
 import socket
-import sys
 
 
 def send_unix(path, msg: str):

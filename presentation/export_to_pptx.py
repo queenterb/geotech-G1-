@@ -5,7 +5,7 @@ Usage: python presentation/export_to_pptx.py
 Requires: python-pptx
 """
 from pptx import Presentation
-from pptx.util import Inches, Pt
+from pptx.util import Pt
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[0] / 'PRESENTATION.md'

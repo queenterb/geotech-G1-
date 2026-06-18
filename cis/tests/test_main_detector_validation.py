@@ -1,6 +1,6 @@
 import unittest
 
-from main_detector import validate_event_payload
+from cis.main_detector import validate_event_payload
 
 
 class TestMainDetectorValidation(unittest.TestCase):

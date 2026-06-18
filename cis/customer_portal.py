@@ -1,8 +1,6 @@
 # Customer Portal - Self-Service Features
-from flask import Flask, render_template_string, jsonify, request
+from flask import render_template_string, jsonify, request
 from functools import wraps
-from datetime import datetime
-import os
 
 try:
     from .database import get_db_connection, get_user_subscription

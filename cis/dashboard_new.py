@@ -1,11 +1,8 @@
-from flask import Flask, render_template_string, jsonify, request, redirect, url_for, session
+from flask import Flask, render_template_string, jsonify, request, redirect, url_for
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask import Response
 import json
 import os
-import hashlib
 from functools import wraps
-from datetime import datetime
 
 try:
     from .billing_api import register_billing_routes
@@ -119,7 +116,7 @@ def login():
                 return redirect(url_for("dashboard"))
             else:
                 return render_template_string(LOGIN_TEMPLATE, error="Invalid email/username or password"), 401
-        except Exception as e:
+        except Exception:
             return render_template_string(LOGIN_TEMPLATE, error="Login error"), 500
     
     return render_template_string(LOGIN_TEMPLATE)

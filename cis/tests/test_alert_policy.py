@@ -1,8 +1,5 @@
-import json
 import tempfile
-import os
-import pytest
-from ..main_detector import CISMain
+from cis.main_detector import CISMain
 
 class DummyIntervention:
     def intervene(self, pid, rollback_needed=False):

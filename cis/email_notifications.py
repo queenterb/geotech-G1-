@@ -1,15 +1,14 @@
 # Email Notifications System for CIS
 import os
-import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict
 
 try:
     from .database import get_db_connection, get_user_subscription
 except ImportError:
-    from database import get_db_connection, get_user_subscription
+    from database import get_db_connection
 
 class EmailNotifier:
     """Handle all email notifications."""

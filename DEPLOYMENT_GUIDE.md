@@ -379,9 +379,10 @@ python main_detector.py --config /opt/cis/cis.json
 ### Run Tests Locally
 
 ```bash
-cd cis/
-python -m unittest discover -s tests -p "test_*.py" -v
+python -m unittest discover -s cis/tests -p "test_*.py" -v
 ```
+
+> Note: the tests are written with package imports from `cis`, so use `cis/tests` for discovery.
 
 **Result**: ✅ 7/7 tests passing
 - test_immune_memory.py (2 tests)

@@ -1,8 +1,6 @@
 # Authentication and User Management for CIS
-import os
 import hashlib
 import secrets
-import json
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
 import re
@@ -10,7 +8,7 @@ import re
 try:
     from .database import create_trial_user, get_user_subscription
 except ImportError:
-    from database import create_trial_user, get_user_subscription
+    from database import create_trial_user
 
 class AuthenticationError(Exception):
     """Raised when authentication fails."""

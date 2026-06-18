@@ -2,7 +2,6 @@
 from flask import Flask, Blueprint, request, jsonify, render_template_string
 from functools import wraps
 from datetime import datetime
-import os
 
 try:
     from .auth import register_free_trial, create_session_token, validate_session_token, ValidationError, AuthenticationError
@@ -11,8 +10,8 @@ try:
     from .feature_gating import FeatureGate
     from .database import get_user_subscription, upgrade_subscription, register_endpoint
 except ImportError:
-    from auth import register_free_trial, create_session_token, validate_session_token, ValidationError, AuthenticationError
-    from license_check import check_license, LicenseError, TrialExpiredError, PlanLimitExceededError
+    from auth import register_free_trial, create_session_token, ValidationError, AuthenticationError
+    from license_check import check_license, LicenseError, PlanLimitExceededError
     from stripe_integration import StripePaymentProcessor, StripeError, get_plan_pricing
     from feature_gating import FeatureGate
     from database import get_user_subscription, upgrade_subscription, register_endpoint

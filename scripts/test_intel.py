@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Quick test for threat intel ingestion and enrichment."""
 import json
-import os
 import tempfile
 from cis.threat_intel import ThreatIntelStore
 

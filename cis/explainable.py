@@ -6,7 +6,6 @@ feature importance and aggregates evidence from threat intel and event fields.
 from __future__ import annotations
 
 from typing import Dict, Any, List
-import math
 
 from .threat_intel import global_store
 
