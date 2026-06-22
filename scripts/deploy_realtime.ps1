@@ -26,16 +26,18 @@ Write-Host "Using Python: $venvPython"
 Write-Host "Starting CIS main detector and portal..."
 
 $mainJob = Start-Job -Name cis_main -ScriptBlock {
-    param($py, $alerts)
+    param($py, $alerts, $root)
+    Set-Location $root
     & $py -u -m cis.main_detector --alerts-file $alerts
-} -ArgumentList $venvPython, $alertsFile
+} -ArgumentList $venvPython, $alertsFile, $root
 
 Start-Sleep -Seconds 1
 
 $portalJob = Start-Job -Name cis_portal -ScriptBlock {
-    param($py)
+    param($py, $root)
+    Set-Location $root
     & $py -u -m cis.run_portal
-} -ArgumentList $venvPython
+} -ArgumentList $venvPython, $root
 
 Write-Host "Started jobs: cis_main=$($mainJob.Id), cis_portal=$($portalJob.Id)"
 Write-Host "Alert file: $alertsFile"
