@@ -11,7 +11,15 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    # `CIS_DASHBOARD_SECRET` is required by the test suite to initialize
+    # Flask sessions during automated runs. This value is safe for CI only
+    # (not used in production). Adjust or move to GitHub Secrets if needed.
+    env:
+      CIS_DASHBOARD_SECRET: ci_test_secret_012345678901234567890123
 
     steps:
       - name: Checkout repository
