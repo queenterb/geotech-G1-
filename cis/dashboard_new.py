@@ -221,6 +221,61 @@ def self_healing():
                                  actions=actions,
                                  history=history)
 
+
+# Preview routes (no auth) for visual checks / screenshots
+@app.route('/preview/security-intelligence')
+def preview_security_intelligence():
+    class DummyUser: pass
+    dummy = DummyUser()
+    dummy.id = 1
+    dummy.username = 'preview'
+
+    system_state = {
+        'suspicious_ips': 3,
+        'divergence': 1.9,
+        'immune_alarm': False,
+        'heuristic_alarm': True,
+        'event_buffer': 40
+    }
+    engine = ThreatIntelligenceEngine()
+    risk_score = engine.predict_risk_score(system_state)
+    attack_path = engine.get_predicted_attack_path(system_state)
+    recommendations = engine.get_recommendations(risk_score)
+    business_impact = engine.get_business_impact(risk_score)
+    feed = engine.get_global_threat_feed()
+
+    return render_template_string(SECURITY_INTELLIGENCE_TEMPLATE,
+                                 user=dummy,
+                                 risk_score=risk_score,
+                                 attack_path=attack_path,
+                                 business_impact=business_impact,
+                                 recommendations=recommendations,
+                                 feed=feed)
+
+
+@app.route('/preview/self-healing')
+def preview_self_healing():
+    class DummyUser: pass
+    dummy = DummyUser()
+    dummy.id = 1
+    dummy.username = 'preview'
+
+    system_state = {
+        'suspicious_ips': 3,
+        'divergence': 1.9,
+        'immune_alarm': True,
+        'heuristic_alarm': False,
+        'event_buffer': 55
+    }
+    engine = SelfHealingEngine()
+    actions = engine.evaluate_status(system_state)
+    history = engine.get_action_history()
+
+    return render_template_string(SELF_HEALING_TEMPLATE,
+                                 user=dummy,
+                                 actions=actions,
+                                 history=history)
+
 @app.route('/self-healing-action', methods=['POST'])
 @login_required
 @require_license
@@ -679,10 +734,13 @@ SECURITY_INTELLIGENCE_TEMPLATE = '''
     <title>CIS - Threat Intelligence</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background: #0f172a; color: #e2e8f0; }
-        .navbar { background: #111827; }
-        .card { background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(148, 163, 184, 0.18); }
+        /* Light, clean theme matching Alerts page */
+        body { background: #f8f9fa; color: #111827; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card { background: #ffffff; border: 1px solid #e5e7eb; color: #111827; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
         .badge-recommendation { background: #2563eb; color: white; }
+        h1, h3, h4, h5, h6 { color: #0f172a; }
+        .text-muted { color: #6b7280 !important; }
     </style>
 </head>
 <body>
@@ -772,10 +830,13 @@ SELF_HEALING_TEMPLATE = '''
     <title>CIS - Self-Healing Response</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background: #0a0f1f; color: #e5e7eb; }
-        .navbar { background: #111827; }
-        .card { background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(148, 163, 184, 0.18); }
-        .action-card:hover { transform: translateY(-2px); }
+        /* Light, clean Auto Response styling */
+        body { background: #f8f9fa; color: #111827; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card { background: #ffffff; border: 1px solid #e5e7eb; color: #111827; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+        .action-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        h3, h4, h5 { color: #0f172a; }
+        .text-muted { color: #6b7280 !important; }
     </style>
 </head>
 <body>
@@ -953,6 +1014,16 @@ BILLING_TEMPLATE = '''
         </div>
 
         <h3 class="mt-5 mb-3">Available Plans</h3>
+        <div class="mb-4">
+            <label class="form-label">Billing Cycle</label>
+            <div class="btn-group" role="group" aria-label="Billing period">
+                <input type="radio" class="btn-check" name="billingPeriod" id="billingMonthly" value="monthly" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="billingMonthly">Monthly</label>
+                <input type="radio" class="btn-check" name="billingPeriod" id="billingYearly" value="yearly" autocomplete="off">
+                <label class="btn btn-outline-primary" for="billingYearly">Yearly</label>
+            </div>
+            <p class="text-muted small mt-2">Yearly billing saves 2 months of fees compared to monthly pricing.</p>
+        </div>
         <div class="row">
             <div class="col-md-4">
                 <div class="card pricing-card p-3 {% if subscription.plan == 'free_trial' %}current-plan{% endif %}">
@@ -973,8 +1044,8 @@ BILLING_TEMPLATE = '''
             <div class="col-md-4">
                 <div class="card pricing-card p-3 {% if subscription.plan == 'pro' %}current-plan{% endif %}">
                     <h5>Pro</h5>
-                    <p class="text-muted small">Per endpoint/month</p>
-                    <p class="price">$6<span style="font-size: 1rem;">/endpoint</span></p>
+                    <p class="text-muted small">$6 / endpoint / month<br>$60 / endpoint / year</p>
+                    <p class="price"><span id="proPrice">$6</span><span style="font-size: 1rem;">/endpoint</span></p>
                     <ul class="list-unstyled small">
                         <li>✓ 50 endpoints</li>
                         <li>✓ Causal trace analysis</li>
@@ -991,8 +1062,8 @@ BILLING_TEMPLATE = '''
             <div class="col-md-4">
                 <div class="card pricing-card p-3 {% if subscription.plan == 'enterprise' %}current-plan{% endif %}">
                     <h5>Enterprise</h5>
-                    <p class="text-muted small">Per endpoint/month</p>
-                    <p class="price">$12<span style="font-size: 1rem;">/endpoint</span></p>
+                    <p class="text-muted small">$12 / endpoint / month<br>$120 / endpoint / year</p>
+                    <p class="price"><span id="enterprisePrice">$12</span><span style="font-size: 1rem;">/endpoint</span></p>
                     <ul class="list-unstyled small">
                         <li>✓ Unlimited endpoints</li>
                         <li>✓ All features</li>
@@ -1022,7 +1093,25 @@ BILLING_TEMPLATE = '''
             };
         }
 
+        function getBillingPeriod() {
+            const selected = document.querySelector('input[name="billingPeriod"]:checked');
+            return selected ? selected.value : 'monthly';
+        }
+
+        function updatePriceLabels() {
+            const period = getBillingPeriod();
+            document.getElementById('proPrice').textContent = period === 'monthly' ? '$6' : '$60';
+            document.getElementById('enterprisePrice').textContent = period === 'monthly' ? '$12' : '$120';
+        }
+
+        document.querySelectorAll('input[name="billingPeriod"]').forEach((radio) => {
+            radio.addEventListener('change', updatePriceLabels);
+        });
+
+        updatePriceLabels();
+
         async function upgradePlan(plan) {
+            const billingPeriod = getBillingPeriod();
             const endpoints = plan === 'enterprise' ? 1 : 10;
             const paymentMethod = collectPaymentMethod();
 
@@ -1031,7 +1120,7 @@ BILLING_TEMPLATE = '''
                 return;
             }
 
-            if (!confirm(`Upgrade to ${plan.toUpperCase()} for ${endpoints} endpoint(s)?`)) {
+            if (!confirm(`Upgrade to ${plan.toUpperCase()} (${billingPeriod}) for ${endpoints} endpoint(s)?`)) {
                 return;
             }
 
@@ -1044,6 +1133,7 @@ BILLING_TEMPLATE = '''
                     },
                     body: JSON.stringify({
                         plan: plan,
+                        billing_period: billingPeriod,
                         endpoints: endpoints,
                         payment_method: paymentMethod
                     })
