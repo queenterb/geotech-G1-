@@ -122,10 +122,10 @@ Expected:
 
 This tests the core detection logic without kernel integration:
 
-**Terminal 1** — Start main detector:
+**Terminal 1** — Start unified service (detector + portal):
 ```bash
-cd ~/cis_project/cis
-python3 main_detector.py
+cd ~/cis_project
+python3 -m cis.service
 ```
 
 Expected output:
@@ -180,8 +180,8 @@ Test with high-volume events:
 
 **Terminal 1**:
 ```bash
-cd ~/cis_project/cis
-python3 main_detector.py
+cd ~/cis_project
+python3 -m cis.service
 ```
 
 **Terminal 2**:
@@ -384,8 +384,8 @@ wsl -d Ubuntu-22.04
 # Compile eBPF
 cd ~/cis_project/ebpf && make all
 
-# Run detector (non-root)
-cd ~/cis_project/cis && python3 main_detector.py
+# Run unified service (detector + portal)
+cd ~/cis_project && python3 -m cis.service
 
 # Inject events
 python3 ~/cis_project/cis/simulate_events.py --count 500 --write-ratio 0.98

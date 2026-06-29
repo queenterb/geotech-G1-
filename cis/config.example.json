@@ -13,7 +13,7 @@
     "immune_memory_path": "models/immune_memory.pkl",
     "log_file": "cis/cis_main.log",
     "log_max_bytes": 5000000,
-    "log_backup_count": 5
+    "log_backup_count": 5,
     "smtp_server": "smtp.example.com",
     "smtp_port": 587,
     "smtp_user": "your_email@example.com",

@@ -17,7 +17,7 @@ CIS is a research-oriented ransomware detection prototype combining:
 3. activate virtual environment
 4. `pip install -r requirements.txt`
 5. `python train.py --epochs 2 --save models/lstm_gnn_scripted.pt`
-6. `python main_detector.py`
+6. `python -m cis.service`
 
 ## Linux Host Deployment
 Use `deploy/scripts/install_cis.sh` as root, then configure/build the eBPF loader in `ebpf/` and start systemd services.

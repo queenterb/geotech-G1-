@@ -1,8 +1,8 @@
 FROM python:3.11-slim
 
-WORKDIR /opt/cis
+WORKDIR /opt
 COPY cis/ /opt/cis/
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r /opt/cis/requirements.txt
 
-CMD ["python", "main_detector.py"]
+CMD ["python", "-m", "cis.service"]

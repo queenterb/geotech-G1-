@@ -1,1 +1,1 @@
-{"timestamp": 1779074753.7629642, "event_buffer": 0, "side_buffer": 576, "encryption_indicator": 0.0, "modified_files_count": 0, "divergence": 0.0, "immune_alarm": false, "heuristic_alarm": false}
+{"timestamp": 1782754542.3184693, "event_buffer": 0, "side_buffer": 372, "encryption_indicator": 0.0, "modified_files_count": 0, "modifications_per_min": 0, "divergence": 0.0, "immune_alarm": false, "heuristic_alarm": false, "connections": 0, "suspicious_ips": 0, "out_kbps": 0.0, "renames_per_min": 0, "false_positive_count": 0}

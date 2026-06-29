@@ -88,16 +88,15 @@ This report documents the architecture, components, deployment, runtime behavior
 ### 4.1 Local prototype
 
 For Windows:
-1. Run `quickstart.bat` from the repository root.
-2. Activate `.venv\Scripts\activate.bat`.
-3. Run `python main_detector.py` to start detection.
-4. Run `python dashboard_new.py` to start the dashboard.
+  1. Run `quickstart.bat` from the repository root.
+  2. Activate `.venv\Scripts\activate.bat`.
+  3. Run `python -m cis.service` to start the unified service (detector + portal).
 
 For Linux:
-1. Run `quickstart.sh` or manually create a Python environment.
-2. Install dependencies from `cis/requirements.txt`.
-3. Build eBPF programs in `ebpf/` using `make`.
-4. Launch the detector and dashboard services.
+  1. Run `quickstart.sh` or manually create a Python environment.
+  2. Install dependencies from `cis/requirements.txt`.
+  3. Build eBPF programs in `ebpf/` using `make`.
+  4. Launch the unified service: `python3 -m cis.service` (or use systemd/container assets).
 
 ### 4.2 Container deployment
 

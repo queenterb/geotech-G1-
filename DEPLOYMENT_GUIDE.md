@@ -50,11 +50,9 @@ cis/
 ├── config.example.json            # Configuration template
 ├── requirements.txt               # Pinned dependencies (pytorch optional)
 ├── README.md                      # Module documentation
-└── tests/                         # Unit test suite
+CIS_CONFIG_PATH=/opt/cis/cis.json python -m cis.service
     ├── test_immune_memory.py
     ├── test_intervention_engine.py
-    └── test_main_detector_validation.py
-```
 
 ### eBPF Kernel Components (Linux Only)
 ```
@@ -172,8 +170,8 @@ pip install -r requirements.txt
 # 2. Train a quick model
 python train.py --epochs 1 --save models/lstm_gnn_scripted.pt
 
-# 3. Run the daemon (no eBPF, uses synthetic side-channel)
-python main_detector.py
+# 3. Run the unified service (detector + portal)
+python -m cis.service
 
 # 4. In another terminal, inject synthetic events
 python simulate_events.py --count 500 --pid 1234 \
@@ -182,6 +180,9 @@ python simulate_events.py --count 500 --pid 1234 \
 # 5. Monitor output
 tail -f /tmp/cis_alerts.jsonl
 cat /tmp/cis_status.json
+
+# 6. Access the web portal
+# http://localhost:8000
 ```
 
 **Result**: Core detection loop validates successfully. No eBPF, no systemd, no Firecracker.

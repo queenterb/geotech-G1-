@@ -28,10 +28,10 @@ python train.py --epochs 1 --save models/lstm_gnn_scripted.pt
 echo.
 echo ✅ Setup complete!
 echo.
-echo To run the daemon ^(in one terminal^):
-echo   cd cis
+echo To run the unified service ^(in one terminal^):
+echo   cd ..
 echo   .venv\Scripts\activate
-echo   python main_detector.py
+echo   python -m cis.service
 echo.
 echo To inject test events ^(in another terminal^):
 echo   cd cis

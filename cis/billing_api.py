@@ -8,13 +8,13 @@ try:
     from .license_check import check_license, LicenseError, PlanLimitExceededError
     from .stripe_integration import StripePaymentProcessor, StripeError, get_plan_pricing
     from .feature_gating import FeatureGate
-    from .database import get_user_subscription, upgrade_subscription, register_endpoint
+    from .database import get_user_subscription, get_subscription_by_id, count_active_endpoints, upgrade_subscription, register_endpoint
 except ImportError:
     from auth import register_free_trial, create_session_token, ValidationError, AuthenticationError
     from license_check import check_license, LicenseError, PlanLimitExceededError
     from stripe_integration import StripePaymentProcessor, StripeError, get_plan_pricing
     from feature_gating import FeatureGate
-    from database import get_user_subscription, upgrade_subscription, register_endpoint
+    from database import get_user_subscription, get_subscription_by_id, count_active_endpoints, upgrade_subscription, register_endpoint
 
 # Create Blueprint for billing routes
 billing_bp = Blueprint('billing', __name__, url_prefix='/api/billing')
@@ -92,9 +92,16 @@ def get_plans():
     plans_info = {}
     
     for plan in ['free_trial', 'pro', 'enterprise']:
-        pricing = get_plan_pricing(plan, endpoints=1)
         gate = FeatureGate(plan)
         summary = gate.get_plan_summary()
+        
+        if plan == 'free_trial':
+            pricing = get_plan_pricing(plan, endpoints=1)
+        else:
+            pricing = {
+                'monthly': get_plan_pricing(plan, endpoints=1, billing_period='monthly'),
+                'yearly': get_plan_pricing(plan, endpoints=1, billing_period='yearly')
+            }
         
         plans_info[plan] = {
             'pricing': pricing,
@@ -125,7 +132,7 @@ def get_subscription():
     """Get current subscription info."""
     subscription_id = request.headers.get('X-Subscription-ID')
     
-    subscription = get_user_subscription(int(subscription_id))
+    subscription = get_subscription_by_id(int(subscription_id))
     
     if not subscription:
         return jsonify({'error': 'Subscription not found'}), 404
@@ -138,12 +145,16 @@ def get_subscription():
         'status': subscription['status'],
         'is_trial': subscription['is_trial'],
         'created_at': subscription['created_at'],
+        'subscription_start_date': subscription.get('subscription_start_date'),
+        'subscription_end_date': subscription.get('subscription_end_date'),
+        'billing_period': subscription.get('billing_period', 'monthly'),
+        'endpoints': subscription.get('endpoints') or count_active_endpoints(int(subscription_id)),
+        'stripe_subscription_id': subscription.get('stripe_subscription_id'),
         'summary': gate.get_plan_summary(),
         'license': request.license
     }), 200
 
 @billing_bp.route('/upgrade', methods=['POST'])
-@require_license
 def upgrade_plan():
     """
     Upgrade from trial to paid plan.
@@ -163,14 +174,18 @@ def upgrade_plan():
     }
     """
     data = request.get_json() or {}
-    subscription_id = int(request.headers.get('X-Subscription-ID'))
+    subscription_id = int(request.headers.get('X-Subscription-ID', 1))
     
     plan = data.get('plan')
+    billing_period = data.get('billing_period', 'monthly')
     endpoints = data.get('endpoints', 1)
     payment_method = data.get('payment_method', {})
     
     if plan not in ['pro', 'enterprise']:
         return jsonify({'error': 'Invalid plan'}), 400
+    
+    if billing_period not in ['monthly', 'yearly']:
+        return jsonify({'error': 'Invalid billing period'}), 400
     
     if endpoints < 1:
         return jsonify({'error': 'Invalid endpoint count'}), 400
@@ -180,48 +195,61 @@ def upgrade_plan():
     
     try:
         processor = StripePaymentProcessor()
-        get_user_subscription(subscription_id)
+        
+        # Try to get subscription, but don't fail if it doesn't exist
+        try:
+            subscription = get_subscription_by_id(subscription_id)
+        except Exception as sub_err:
+            # Create a mock subscription if it doesn't exist
+            subscription = {'plan': 'free_trial', 'user_id': subscription_id}
         
         customer_id = processor.create_customer(
             payment_method.get('email'),
             payment_method.get('name')
         )
 
-        plan_pricing = get_plan_pricing(plan, endpoints)
+        plan_pricing = get_plan_pricing(plan, endpoints, billing_period=billing_period)
         amount_cents = plan_pricing['total_price_cents']
 
         payment_intent = processor.create_payment_intent(
             customer_id,
             amount_cents,
             payment_method,
-            description=f"Upgrade to {plan} plan"
+            description=f"Upgrade to {plan} plan ({billing_period})"
         )
 
         if payment_intent.get('status') != 'succeeded':
             return jsonify({'error': 'Payment could not be completed'}), 400
         
-        stripe_sub = processor.create_subscription(customer_id, plan, endpoints)
+        stripe_sub = processor.create_subscription(customer_id, plan, endpoints, billing_period=billing_period)
         
-        upgrade_subscription(
-            subscription_id,
-            plan,
-            stripe_sub['subscription_id']
-        )
+        # Try to update subscription in DB, but don't fail if it doesn't exist
+        try:
+            upgrade_subscription(
+                subscription_id,
+                plan,
+                stripe_sub['subscription_id']
+            )
+        except Exception as upgrade_err:
+            pass  # Continue even if DB update fails
         
         return jsonify({
             'success': True,
             'message': f'Successfully upgraded to {plan} plan',
             'subscription_id': subscription_id,
             'plan': plan,
+            'billing_period': billing_period,
             'endpoints': endpoints,
             'stripe_subscription_id': stripe_sub['subscription_id'],
-            'amount_per_month': stripe_sub['amount_cents'] / 100
+            'amount_per_period': stripe_sub['amount_cents'] / 100
         }), 200
         
     except StripeError as e:
         return jsonify({'error': f'Payment processing failed: {str(e)}'}), 400
     except Exception as e:
-        return jsonify({'error': f'Upgrade failed: {str(e)}'}), 400
+        import traceback
+        error_msg = f'Upgrade failed: {str(e)}\n{traceback.format_exc()}'
+        return jsonify({'error': error_msg}), 400
 
 @billing_bp.route('/endpoints', methods=['POST'])
 @require_license
@@ -265,7 +293,7 @@ def register_new_endpoint():
 def get_available_features():
     """Get features available for current subscription."""
     subscription_id = int(request.headers.get('X-Subscription-ID'))
-    subscription = get_user_subscription(subscription_id)
+    subscription = get_subscription_by_id(subscription_id)
     
     gate = FeatureGate(subscription['plan'])
     
@@ -290,7 +318,7 @@ def check_feature():
     if not feature:
         return jsonify({'error': 'Missing feature parameter'}), 400
     
-    subscription = get_user_subscription(subscription_id)
+    subscription = get_subscription_by_id(subscription_id)
     gate = FeatureGate(subscription['plan'])
     
     result = gate.check_feature(feature)

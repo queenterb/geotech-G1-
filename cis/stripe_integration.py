@@ -20,17 +20,23 @@ PLANS = {
     },
     'pro': {
         'name': 'Pro',
-        'price': 600,  # $6.00 per endpoint/month in cents
+        'price': {
+            'monthly': 600,  # $6.00 per endpoint/month in cents
+            'yearly': 6000  # equivalent to 10 months for annual billing
+        },
         'currency': 'usd',
-        'billing_period': 'monthly',
+        'billing_periods': ['monthly', 'yearly'],
         'endpoints': 50,
         'features': ['basic_detection', 'alerts', 'causal_trace', 'api_access']
     },
     'enterprise': {
         'name': 'Enterprise',
-        'price': 1200,  # $12.00 per endpoint/month in cents
+        'price': {
+            'monthly': 1200,  # $12.00 per endpoint/month in cents
+            'yearly': 12000  # equivalent to 10 months for annual billing
+        },
         'currency': 'usd',
-        'billing_period': 'monthly',
+        'billing_periods': ['monthly', 'yearly'],
         'endpoints': float('inf'),
         'features': ['all']
     }
@@ -60,7 +66,7 @@ class StripePaymentProcessor:
             raise StripeError(f"Failed to create customer: {str(e)}")
     
     @staticmethod
-    def create_subscription(customer_id: str, plan: str, endpoints: int = 1) -> Dict:
+    def create_subscription(customer_id: str, plan: str, endpoints: int = 1, billing_period: str = 'monthly') -> Dict:
         """
         Create a Stripe subscription.
         
@@ -68,6 +74,7 @@ class StripePaymentProcessor:
             customer_id: Stripe customer ID
             plan: Plan type ('pro' or 'enterprise')
             endpoints: Number of endpoints to bill for
+            billing_period: 'monthly' or 'yearly'
             
         Returns:
             Dict with subscription info
@@ -76,10 +83,13 @@ class StripePaymentProcessor:
             raise StripeError(f"Invalid plan: {plan}")
         
         plan_config = PLANS[plan]
+        if billing_period not in plan_config['price']:
+            raise StripeError(f"Invalid billing period: {billing_period}")
         
         try:
-            # Calculate price based on endpoints
-            price_cents = plan_config['price'] * endpoints
+            # Calculate price based on endpoints and billing period
+            unit_price = plan_config['price'][billing_period]
+            price_cents = unit_price * endpoints
             
             # In production:
             # subscription = stripe.Subscription.create(
@@ -89,19 +99,20 @@ class StripePaymentProcessor:
             #             'currency': plan_config['currency'],
             #             'product_data': {'name': plan_config['name']},
             #             'unit_amount': price_cents,
-            #             'recurring': {'interval': 'month'}
+            #             'recurring': {'interval': billing_period}
             #         },
             #         'quantity': endpoints
             #     }]
             # )
             
-            subscription_id = f"sub_{customer_id}_{plan}_{int(datetime.now().timestamp())}"
+            subscription_id = f"sub_{customer_id}_{plan}_{billing_period}_{int(datetime.now().timestamp())}"
             
             return {
                 'subscription_id': subscription_id,
                 'customer_id': customer_id,
                 'plan': plan,
                 'endpoints': endpoints,
+                'billing_period': billing_period,
                 'amount_cents': price_cents,
                 'currency': plan_config['currency'],
                 'status': 'active',
@@ -191,22 +202,30 @@ class StripePaymentProcessor:
         except Exception as e:
             raise StripeError(f"Failed to cancel subscription: {str(e)}")
 
-def get_plan_pricing(plan: str, endpoints: int = 1) -> Dict:
+def get_plan_pricing(plan: str, endpoints: int = 1, billing_period: str = 'monthly') -> Dict:
     """Get pricing for a plan."""
     if plan not in PLANS:
         raise StripeError(f"Invalid plan: {plan}")
     
     config = PLANS[plan]
-    price_cents = config['price'] * endpoints
+    if plan == 'free_trial':
+        price_cents = config['price']
+        billing_period = 'trial'
+        unit_price = config['price']
+    else:
+        if billing_period not in config['price']:
+            raise StripeError(f"Invalid billing period: {billing_period}")
+        unit_price = config['price'][billing_period]
+        price_cents = unit_price * endpoints
     
     return {
         'plan': plan,
         'endpoints': endpoints,
-        'price_per_endpoint_cents': config['price'],
+        'price_per_endpoint_cents': unit_price,
         'total_price_cents': price_cents,
         'total_price_dollars': price_cents / 100,
         'currency': config['currency'],
-        'billing_period': config['billing_period'],
+        'billing_period': billing_period,
         'features': config['features']
     }
 

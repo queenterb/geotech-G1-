@@ -2,7 +2,15 @@ from flask import Flask, render_template_string, jsonify, request, redirect, url
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 import json
 import os
+import time
 from functools import wraps
+
+try:
+    from .telemetry_ingest import TelemetryIngestionService
+    from .monitoring import OperationalMonitor
+except ImportError:
+    from telemetry_ingest import TelemetryIngestionService
+    from monitoring import OperationalMonitor
 
 try:
     from .billing_api import register_billing_routes
@@ -27,6 +35,17 @@ app.secret_key = os.environ.get("CIS_DASHBOARD_SECRET", "change_this_secret_in_p
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
+
+# Operational endpoint helpers
+
+def get_monitor() -> OperationalMonitor:
+    status_path = os.environ.get("CIS_STATUS_PATH", os.path.join(os.environ.get("TEMP", "/tmp"), "cis_status.json"))
+    return OperationalMonitor(status_path=status_path)
+
+
+def get_telemetry_service() -> TelemetryIngestionService:
+    storage_path = os.environ.get("CIS_TELEMETRY_STORAGE_PATH", os.path.join(os.environ.get("TEMP", "/tmp"), "cis_live_events.jsonl"))
+    return TelemetryIngestionService(storage_path=storage_path)
 
 # Register billing routes
 register_billing_routes(app)
@@ -82,6 +101,42 @@ def require_license(f):
 # ============================================================================
 # ROUTES
 # ============================================================================
+
+@app.route("/healthz")
+def healthz():
+    try:
+        conn = get_db_connection()
+        conn.execute("SELECT 1")
+        conn.close()
+        return jsonify({"status": "ok", "database": "ready"}), 200
+    except Exception as exc:
+        return jsonify({"status": "error", "database": "unavailable", "detail": str(exc)}), 500
+
+@app.route("/api/status")
+def api_status():
+    monitor = get_monitor()
+    try:
+        status_data = monitor.get_status()
+        return jsonify(status_data), 200
+    except Exception as exc:
+        return jsonify({"status": "error", "detail": str(exc)}), 500
+
+@app.route("/api/telemetry", methods=["POST"])
+def ingest_telemetry():
+    telemetry_service = get_telemetry_service()
+    monitor = get_monitor()
+    payload = request.get_json(silent=True)
+    if not payload:
+        return jsonify({"error": "Missing JSON payload"}), 400
+
+    try:
+        result = telemetry_service.ingest_payload(payload)
+        monitor.write_status({"last_ingest": time.time(), "last_pid": payload.get("pid")})
+        return jsonify(result), 201
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": "Telemetry ingestion failed", "detail": str(exc)}), 500
 
 @app.route("/")
 def index():
@@ -359,10 +414,22 @@ LOGIN_TEMPLATE = '''
     <title>CIS - Login</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; }
-        .login-container { max-width: 400px; width: 100%; background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        h2 { color: #667eea; margin-bottom: 1.5rem; }
-        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .login-container { max-width: 400px; width: 100%; background: #ffffff; padding: 2.5rem; border-radius: 1rem; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        h2 { color: #0f172a; margin-bottom: 1.5rem; font-weight: 700; }
+        .form-label { color: #374151; font-weight: 600; font-size: 0.95rem; }
+        .form-control { border: 1px solid #d1d5db; background: #f9fafb; color: #111827; border-radius: 0.5rem; }
+        .form-control:focus { border-color: #667eea; background: #ffffff; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25); color: #111827; }
+        .form-control::placeholder { color: #9ca3af; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: #ffffff; font-weight: 600; padding: 0.75rem 1.5rem; transition: all 0.3s; }
+        .btn-primary:hover { box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3); transform: translateY(-2px); }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-outline-primary { color: #667eea; border: 1.5px solid #667eea; font-weight: 600; transition: all 0.3s; }
+        .btn-outline-primary:hover { background: #667eea; color: #ffffff; border-color: #667eea; }
+        hr { border-color: #e5e7eb; }
+        .text-muted { color: #6b7280 !important; font-weight: 500; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { color: #764ba2; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -399,28 +466,32 @@ DASHBOARD_TEMPLATE = '''
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background: #0b1120; color: #e5e7eb; }
-        .navbar { background: #111827; }
-        .navbar-brand, .nav-link { color: #e5e7eb !important; }
-        .metric-card, .dashboard-card { border: 1px solid rgba(148, 163, 184, 0.18); background: rgba(15, 23, 42, 0.9); border-radius: 1rem; }
-        .metric-title { color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
-        .metric-value { font-size: 2rem; font-weight: 700; margin: 0; }
-        .metric-note { color: #94a3b8; font-size: 0.8rem; }
-        .status-pill { padding: 0.5rem 1rem; border-radius: 999px; font-weight: 700; }
-        .status-clear { background: #16a34a; color: #ecfccb; }
-        .status-alert { background: #dc2626; color: #fecaca; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #f8f9fa 100%); color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); }
+        .navbar-brand, .nav-link { color: #ffffff !important; font-weight: 500; }
+        .nav-link:hover { color: #f0f4ff !important; }
+        h1, h2, h3, h4, h5, h6 { color: #0f172a; font-weight: 600; }
+        .metric-card, .dashboard-card { border: none; background: #ffffff; border-radius: 1rem; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08); transition: transform 0.3s, box-shadow 0.3s; }
+        .metric-card:hover, .dashboard-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.12); }
+        .metric-title { color: #6b7280; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+        .metric-value { font-size: 2rem; font-weight: 700; margin: 0; color: #667eea; }
+        .metric-note { color: #9ca3af; font-size: 0.8rem; }
+        .status-pill { padding: 0.5rem 1rem; border-radius: 999px; font-weight: 700; font-size: 0.9rem; }
+        .status-clear { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: #ffffff; }
+        .status-alert { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: #ffffff; }
         .chart-card { min-height: 320px; }
         .alert-feed { max-height: 420px; overflow-y: auto; }
-        .alert-item { border-bottom: 1px solid rgba(148, 163, 184, 0.15); padding: 1rem 0; }
+        .alert-item { border-bottom: 1px solid #e5e7eb; padding: 1rem 0; color: #374151; }
         .alert-item:last-child { border-bottom: none; }
         .alert-severity { font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 999px; font-weight: 700; }
-        .alert-high { background: #dc2626; color: white; }
-        .alert-medium { background: #f97316; color: white; }
-        .alert-info { background: #2563eb; color: white; }
+        .alert-high { background: #fee2e2; color: #991b1b; }
+        .alert-medium { background: #fed7aa; color: #92400e; }
+        .alert-info { background: #dbeafe; color: #1e40af; }
         .top-summary { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-        .top-box { flex: 1 1 180px; padding: 1rem; background: rgba(255,255,255,0.04); border-radius: 1rem; border: 1px solid rgba(148, 163, 184, 0.18); }
-        .top-box h6 { margin-bottom: 0.5rem; color: #94a3b8; }
-        .top-box p { margin: 0; font-size: 1.6rem; font-weight: 700; }
+        .top-box { flex: 1 1 180px; padding: 1.25rem; background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%); border-radius: 1rem; border: 1px solid #e5e7eb; }
+        .top-box h6 { margin-bottom: 0.75rem; color: #6b7280; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+        .top-box p { margin: 0; font-size: 1.6rem; font-weight: 700; color: #667eea; }
+        .text-muted { color: #6b7280 !important; }
     </style>
 </head>
 <body>
@@ -734,13 +805,18 @@ SECURITY_INTELLIGENCE_TEMPLATE = '''
     <title>CIS - Threat Intelligence</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        /* Light, clean theme matching Alerts page */
-        body { background: #f8f9fa; color: #111827; }
-        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .card { background: #ffffff; border: 1px solid #e5e7eb; color: #111827; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
-        .badge-recommendation { background: #2563eb; color: white; }
-        h1, h3, h4, h5, h6 { color: #0f172a; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #f8f9fa 100%); color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); }
+        .navbar-brand, .nav-link { color: #ffffff !important; font-weight: 500; }
+        .nav-link:hover { color: #f0f4ff !important; }
+        h1, h3, h4, h5, h6 { color: #0f172a; font-weight: 600; }
+        .card { background: #ffffff; border: none; color: #111827; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08); border-radius: 1rem; }
+        .card:hover { box-shadow: 0 6px 20px rgba(102, 126, 234, 0.12); }
+        .list-group-item { background: transparent; border: 1px solid #e5e7eb; color: #374151; }
+        .list-group-item h6 { color: #0f172a; font-weight: 600; }
+        .badge { font-weight: 600; padding: 0.35rem 0.75rem; border-radius: 0.5rem; }
         .text-muted { color: #6b7280 !important; }
+        p { color: #374151; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -830,13 +906,20 @@ SELF_HEALING_TEMPLATE = '''
     <title>CIS - Self-Healing Response</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        /* Light, clean Auto Response styling */
-        body { background: #f8f9fa; color: #111827; }
-        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .card { background: #ffffff; border: 1px solid #e5e7eb; color: #111827; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
-        .action-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-        h3, h4, h5 { color: #0f172a; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #f8f9fa 100%); color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); }
+        .navbar-brand, .nav-link { color: #ffffff !important; font-weight: 500; }
+        .nav-link:hover { color: #f0f4ff !important; }
+        h3, h4, h5 { color: #0f172a; font-weight: 600; }
+        .card { background: #ffffff; border: none; color: #111827; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08); border-radius: 1rem; }
+        .card:hover { box-shadow: 0 6px 20px rgba(102, 126, 234, 0.12); }
+        .action-card { border: 1px solid #e5e7eb !important; }
+        .action-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.12) !important; border-color: #667eea !important; }
+        .list-group-item { background: transparent; border: 1px solid #e5e7eb; color: #374151; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; font-weight: 600; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
         .text-muted { color: #6b7280 !important; }
+        p { color: #374151; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -940,12 +1023,24 @@ BILLING_TEMPLATE = '''
     <title>CIS - Billing</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background: #f8f9fa; }
-        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .pricing-card { border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.1); transition: transform 0.3s; }
-        .pricing-card:hover { transform: translateY(-5px); }
-        .current-plan { border: 3px solid #28a745; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #f8f9fa 100%); color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); }
+        .navbar-brand, .nav-link { color: #ffffff !important; font-weight: 500; }
+        .nav-link:hover { color: #f0f4ff !important; }
+        h1, h3, h4, h5 { color: #0f172a; font-weight: 600; }
+        .pricing-card { border: 1px solid #e5e7eb; background: #ffffff; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08); border-radius: 1rem; transition: transform 0.3s, box-shadow 0.3s; }
+        .pricing-card:hover { transform: translateY(-5px); box-shadow: 0 12px 24px rgba(102, 126, 234, 0.15); border-color: #667eea; }
+        .current-plan { border: 2px solid #16a34a !important; background: linear-gradient(135deg, rgba(22, 163, 74, 0.05), rgba(22, 163, 74, 0.02)); }
         .price { font-size: 2rem; font-weight: bold; color: #667eea; }
+        .card { background: #ffffff; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08); border-radius: 1rem; }
+        .card h5 { color: #0f172a; font-weight: 600; }
+        .form-label { color: #374151; font-weight: 600; }
+        .form-control { border: 1px solid #d1d5db; background: #ffffff; color: #111827; }
+        .form-control:focus { border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25); }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; font-weight: 600; color: white; }
+        .btn-primary:hover { box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+        .text-muted { color: #6b7280 !important; }
+        li { color: #374151; }
     </style>
 </head>
 <body>
@@ -1163,8 +1258,18 @@ ALERTS_TEMPLATE = '''
     <title>CIS - Alerts</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background: #f8f9fa; }
-        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #f8f9fa 100%); color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); }
+        .navbar-brand, .nav-link { color: #ffffff !important; font-weight: 500; }
+        .nav-link:hover { color: #f0f4ff !important; }
+        h1, h2, h3 { color: #0f172a; font-weight: 600; }
+        .table { background: #ffffff; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08); border-radius: 1rem; overflow: hidden; }
+        .table-dark { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; }
+        .table-dark th { font-weight: 600; border: none; }
+        .table tbody tr { border-bottom: 1px solid #e5e7eb; }
+        .table tbody tr:hover { background: linear-gradient(90deg, transparent 0%, rgba(102, 126, 234, 0.05) 100%); }
+        .badge { font-weight: 600; padding: 0.35rem 0.75rem; border-radius: 0.5rem; }
+        .text-muted { color: #6b7280 !important; }
     </style>
 </head>
 <body>
@@ -1214,8 +1319,15 @@ TRIAL_EXPIRED_TEMPLATE = '''
     <title>Trial Expired</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background: #f8f9fa; display: flex; align-items: center; min-height: 100vh; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #f8f9fa 100%); display: flex; align-items: center; min-height: 100vh; color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
         .alert-container { max-width: 600px; }
+        .alert { border: none; border-radius: 1rem; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15); background: #fef2f2; border-left: 4px solid #dc2626; }
+        .alert-heading { color: #b91c1c; font-weight: 700; }
+        .alert p { color: #374151; line-height: 1.6; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; font-weight: 600; color: #ffffff; }
+        .btn-primary:hover { box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+        .btn-secondary { background: #e5e7eb; border: none; color: #374151; font-weight: 600; }
+        .btn-secondary:hover { background: #d1d5db; }
     </style>
 </head>
 <body>
