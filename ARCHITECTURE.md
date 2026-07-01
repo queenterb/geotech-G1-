@@ -95,6 +95,61 @@ Each numbered step corresponds to the TODO list and includes concrete subtasks a
 - Time-to-recovery for ransomware scenarios (RTO)
 - Analyst workload reduction (% automated actions)
 
+## CIS Dashboard Implementation Plan
+A modern CIS user interface is proposed to expand the existing investigation workspace into a fully featured security operations dashboard.
+
+Technology stack:
+- Frontend: React + TypeScript + Tailwind CSS + Framer Motion + React Router + Recharts
+- Backend: FastAPI (Python) with SQLAlchemy
+- Real-time streaming: WebSockets for alert and telemetry updates
+- Database: PostgreSQL
+- Cache/Queue: Redis
+- Authentication: JWT + role-based access control
+- Deployment: Docker Compose + Nginx reverse proxy
+- Telemetry: eBPF collector feeding the detection pipeline
+- AI engine: Python with PyTorch/TensorFlow and optional ONNX runtime
+
+Dashboard components:
+- Sidebar navigation
+- Top status bar
+- Live event feed
+- Threat level cards
+- World attack map
+- Attack timeline
+- Resource monitoring charts
+- Process table
+- Alert drawer
+- Quarantine management
+- Reports and settings
+
+Proposed dashboard page list:
+1. Dashboard
+2. Live Events
+3. Threat Intelligence
+4. AI Prediction
+5. Attack Map
+6. Process Monitor
+7. Quarantine
+8. Reports
+9. Digital Twin
+10. Playbooks
+11. User Management
+12. Alert History
+13. System Settings
+14. Analytics & Logs
+15. Incident Response
+
+Proposed repo layout:
+- `frontend/`
+  - `src/`, `components/`, `pages/`, `hooks/`, `services/`, `styles/`
+- `backend/`
+  - `api/`, `models/`, `websocket/`, `auth/`, `detection/`, `ai/`, `database/`
+- `docker-compose.yml`
+- `nginx/`
+- `README.md`
+
+This plan is intended to complement the existing Python CIS runtime under `cis/` and the current Flask-based dashboard prototype in `cis/dashboard_new.py`.
+
 ## Next immediate actions (short-term)
 - Produce `telemetry_inventory.csv` and add collector examples.
 - Prototype a lightweight collector and send a sample event to an in-repo test harness (e.g., `test_import.py`).

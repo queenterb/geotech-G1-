@@ -10,7 +10,10 @@ services:
     volumes:
       - /tmp:/tmp
       - /var/log/cis:/var/log/cis
-    command: ["python", "main_detector.py"]
+    environment:
+      - CIS_HOST=0.0.0.0
+      - CIS_PORT=8000
+    command: ["python", "-m", "cis.service"]
 
   cis-sidechannel:
     build:

@@ -1,12 +1,13 @@
 [Unit]
-Description=CIS Main Detection Engine
+Description=CIS Main Detection Engine and Portal
 After=cis-ebpf-loader.service cis-sidechannel.service cis-digital-twin.service
 Requires=cis-ebpf-loader.service cis-sidechannel.service cis-digital-twin.service
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/cis
-ExecStart=/usr/bin/python3 /opt/cis/main_detector.py
+WorkingDirectory=/opt
+Environment=CIS_HOST=0.0.0.0 CIS_PORT=8000
+ExecStart=/usr/bin/python3 -m cis.service
 Restart=always
 RestartSec=5
 User=cis

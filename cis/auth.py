@@ -6,9 +6,9 @@ from typing import Dict, Optional, Tuple
 import re
 
 try:
-    from .database import create_trial_user
+    from .database import create_trial_user, store_session_token, get_session_by_token, revoke_session_token, log_audit_event
 except ImportError:
-    from database import create_trial_user
+    from database import create_trial_user, store_session_token, get_session_by_token, revoke_session_token, log_audit_event
 
 class AuthenticationError(Exception):
     """Raised when authentication fails."""
@@ -116,6 +116,7 @@ def register_free_trial(email: str, username: str, password: str, organization: 
     # Create trial user in database
     try:
         user_data = create_trial_user(email, username, password_hash, organization)
+        log_audit_event('user_registered', user_id=user_data['user_id'], subscription_id=user_data['subscription_id'], details=f"Registered {email}")
         
         return {
             'success': True,
@@ -128,7 +129,10 @@ def register_free_trial(email: str, username: str, password: str, organization: 
             'message': 'Free trial account created successfully! You have 14 days to explore all features.'
         }
     except ValueError as e:
-        raise AuthenticationError(str(e))
+        message = str(e)
+        if 'UNIQUE constraint failed: users.email' in message or 'UNIQUE constraint failed: users.username' in message:
+            raise AuthenticationError("An account with that email or username already exists. Please use a different one.")
+        raise AuthenticationError(message)
 
 def generate_api_token(user_id: int, subscription_id: int) -> str:
     """Generate an API token for user."""
@@ -141,9 +145,11 @@ def generate_api_token(user_id: int, subscription_id: int) -> str:
     return token_data['token']
 
 def create_session_token(user_id: int, subscription_id: int, expires_in_hours: int = 24) -> Dict:
-    """Create a session token for authentication."""
+    """Create a session token for authentication and persist it in the database."""
     token = secrets.token_urlsafe(32)
     expires_at = datetime.now() + timedelta(hours=expires_in_hours)
+    store_session_token(token, user_id, subscription_id, expires_at.isoformat())
+    log_audit_event('session_created', user_id=user_id, subscription_id=subscription_id, details='Issued session token')
     
     return {
         'token': token,
@@ -153,13 +159,25 @@ def create_session_token(user_id: int, subscription_id: int, expires_in_hours: i
         'token_type': 'Bearer'
     }
 
+
 def validate_session_token(token: str) -> Optional[Dict]:
-    """Validate a session token (would normally check against database)."""
-    # This is a placeholder - in production, validate against session storage
+    """Validate a session token against persisted session storage."""
     if not token or len(token) < 20:
         return None
-    
+
+    session = get_session_by_token(token)
+    if not session:
+        return None
+
     return {
         'valid': True,
-        'token': token
+        'token': token,
+        'user_id': session['user_id'],
+        'subscription_id': session['subscription_id'],
+        'expires_at': session['expires_at']
     }
+
+
+def invalidate_session_token(token: str) -> bool:
+    """Invalidate a persisted session token."""
+    return revoke_session_token(token)

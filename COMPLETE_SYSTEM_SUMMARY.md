@@ -65,7 +65,7 @@ CIS is a ransomware detection prototype that combines:
 
 ## How to Use
 
-1. Start the detector: `cd cis && .venv\Scripts\python.exe main_detector.py`
+1. Start the unified service: `cd cis && .venv\Scripts\python.exe -m cis.service`
 2. Start the dashboard: `cd cis && .venv\Scripts\python.exe dashboard_new.py`
 3. Access the UI at `http://127.0.0.1:5000`
 4. Login with email or username and your password

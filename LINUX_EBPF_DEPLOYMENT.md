@@ -99,9 +99,9 @@ pip3 install -r requirements.txt
 ### Step 7: Run the System (Non-Root for Initial Test)
 
 ```bash
-# Terminal 1: Start main detector (uses Unix socket on Linux)
-cd ~/cis_project/cis
-python3 main_detector.py
+# Terminal 1: Start unified service (detector + portal, uses Unix socket on Linux)
+cd ~/cis_project
+python3 -m cis.service
 
 # Terminal 2: Inject synthetic events
 cd ~/cis_project/cis

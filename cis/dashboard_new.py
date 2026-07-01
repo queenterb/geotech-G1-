@@ -2,7 +2,15 @@ from flask import Flask, render_template_string, jsonify, request, redirect, url
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 import json
 import os
+import time
 from functools import wraps
+
+try:
+    from .telemetry_ingest import TelemetryIngestionService
+    from .monitoring import OperationalMonitor
+except ImportError:
+    from telemetry_ingest import TelemetryIngestionService
+    from monitoring import OperationalMonitor
 
 try:
     from .billing_api import register_billing_routes
@@ -27,6 +35,17 @@ app.secret_key = os.environ.get("CIS_DASHBOARD_SECRET", "change_this_secret_in_p
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
+
+# Operational endpoint helpers
+
+def get_monitor() -> OperationalMonitor:
+    status_path = os.environ.get("CIS_STATUS_PATH", os.path.join(os.environ.get("TEMP", "/tmp"), "cis_status.json"))
+    return OperationalMonitor(status_path=status_path)
+
+
+def get_telemetry_service() -> TelemetryIngestionService:
+    storage_path = os.environ.get("CIS_TELEMETRY_STORAGE_PATH", os.path.join(os.environ.get("TEMP", "/tmp"), "cis_live_events.jsonl"))
+    return TelemetryIngestionService(storage_path=storage_path)
 
 # Register billing routes
 register_billing_routes(app)
@@ -82,6 +101,42 @@ def require_license(f):
 # ============================================================================
 # ROUTES
 # ============================================================================
+
+@app.route("/healthz")
+def healthz():
+    try:
+        conn = get_db_connection()
+        conn.execute("SELECT 1")
+        conn.close()
+        return jsonify({"status": "ok", "database": "ready"}), 200
+    except Exception as exc:
+        return jsonify({"status": "error", "database": "unavailable", "detail": str(exc)}), 500
+
+@app.route("/api/status")
+def api_status():
+    monitor = get_monitor()
+    try:
+        status_data = monitor.get_status()
+        return jsonify(status_data), 200
+    except Exception as exc:
+        return jsonify({"status": "error", "detail": str(exc)}), 500
+
+@app.route("/api/telemetry", methods=["POST"])
+def ingest_telemetry():
+    telemetry_service = get_telemetry_service()
+    monitor = get_monitor()
+    payload = request.get_json(silent=True)
+    if not payload:
+        return jsonify({"error": "Missing JSON payload"}), 400
+
+    try:
+        result = telemetry_service.ingest_payload(payload)
+        monitor.write_status({"last_ingest": time.time(), "last_pid": payload.get("pid")})
+        return jsonify(result), 201
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": "Telemetry ingestion failed", "detail": str(exc)}), 500
 
 @app.route("/")
 def index():
@@ -221,6 +276,61 @@ def self_healing():
                                  actions=actions,
                                  history=history)
 
+
+# Preview routes (no auth) for visual checks / screenshots
+@app.route('/preview/security-intelligence')
+def preview_security_intelligence():
+    class DummyUser: pass
+    dummy = DummyUser()
+    dummy.id = 1
+    dummy.username = 'preview'
+
+    system_state = {
+        'suspicious_ips': 3,
+        'divergence': 1.9,
+        'immune_alarm': False,
+        'heuristic_alarm': True,
+        'event_buffer': 40
+    }
+    engine = ThreatIntelligenceEngine()
+    risk_score = engine.predict_risk_score(system_state)
+    attack_path = engine.get_predicted_attack_path(system_state)
+    recommendations = engine.get_recommendations(risk_score)
+    business_impact = engine.get_business_impact(risk_score)
+    feed = engine.get_global_threat_feed()
+
+    return render_template_string(SECURITY_INTELLIGENCE_TEMPLATE,
+                                 user=dummy,
+                                 risk_score=risk_score,
+                                 attack_path=attack_path,
+                                 business_impact=business_impact,
+                                 recommendations=recommendations,
+                                 feed=feed)
+
+
+@app.route('/preview/self-healing')
+def preview_self_healing():
+    class DummyUser: pass
+    dummy = DummyUser()
+    dummy.id = 1
+    dummy.username = 'preview'
+
+    system_state = {
+        'suspicious_ips': 3,
+        'divergence': 1.9,
+        'immune_alarm': True,
+        'heuristic_alarm': False,
+        'event_buffer': 55
+    }
+    engine = SelfHealingEngine()
+    actions = engine.evaluate_status(system_state)
+    history = engine.get_action_history()
+
+    return render_template_string(SELF_HEALING_TEMPLATE,
+                                 user=dummy,
+                                 actions=actions,
+                                 history=history)
+
 @app.route('/self-healing-action', methods=['POST'])
 @login_required
 @require_license
@@ -276,13 +386,54 @@ def alerts_json():
     alerts_list = []
     if os.path.exists(alerts_file):
         try:
-            with open(alerts_file, "r") as f:
+            with open(alerts_file, "r", encoding="utf-8") as f:
                 for line in f:
                     if line.strip():
                         alerts_list.append(annotate_alert(json.loads(line)))
         except Exception as e:
             return jsonify({"error": str(e)}), 400
     return jsonify(alerts_list[-20:])
+
+@app.route("/telemetry-json")
+@login_required
+@require_license
+def telemetry_json():
+    telemetry_file = os.environ.get("CIS_TELEMETRY_STORAGE_PATH", os.path.join(os.environ.get("TEMP", "/tmp"), "cis_live_events.jsonl"))
+    events = []
+    if os.path.exists(telemetry_file):
+        try:
+            with open(telemetry_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        events.append(json.loads(line))
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
+    return jsonify(events[-20:])
+
+@app.route("/live-feed")
+@login_required
+@require_license
+def live_feed():
+    status = get_monitor().get_status()
+    alerts_file = os.environ.get("CIS_ALERTS_FILE", os.path.join(os.environ.get("TEMP", "/tmp"), "cis_alerts.jsonl"))
+    alerts_list = []
+    if os.path.exists(alerts_file):
+        with open(alerts_file, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    alerts_list.append(annotate_alert(json.loads(line)))
+    telemetry_file = os.environ.get("CIS_TELEMETRY_STORAGE_PATH", os.path.join(os.environ.get("TEMP", "/tmp"), "cis_live_events.jsonl"))
+    events = []
+    if os.path.exists(telemetry_file):
+        with open(telemetry_file, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    events.append(json.loads(line))
+    return jsonify({
+        "status": status,
+        "alerts": alerts_list[-10:],
+        "telemetry": events[-10:],
+    })
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -304,10 +455,22 @@ LOGIN_TEMPLATE = '''
     <title>CIS - Login</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; }
-        .login-container { max-width: 400px; width: 100%; background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        h2 { color: #667eea; margin-bottom: 1.5rem; }
-        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .login-container { max-width: 400px; width: 100%; background: #ffffff; padding: 2.5rem; border-radius: 1rem; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        h2 { color: #0f172a; margin-bottom: 1.5rem; font-weight: 700; }
+        .form-label { color: #374151; font-weight: 600; font-size: 0.95rem; }
+        .form-control { border: 1px solid #d1d5db; background: #f9fafb; color: #111827; border-radius: 0.5rem; }
+        .form-control:focus { border-color: #667eea; background: #ffffff; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25); color: #111827; }
+        .form-control::placeholder { color: #9ca3af; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: #ffffff; font-weight: 600; padding: 0.75rem 1.5rem; transition: all 0.3s; }
+        .btn-primary:hover { box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3); transform: translateY(-2px); }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-outline-primary { color: #667eea; border: 1.5px solid #667eea; font-weight: 600; transition: all 0.3s; }
+        .btn-outline-primary:hover { background: #667eea; color: #ffffff; border-color: #667eea; }
+        hr { border-color: #e5e7eb; }
+        .text-muted { color: #6b7280 !important; font-weight: 500; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { color: #764ba2; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -344,28 +507,32 @@ DASHBOARD_TEMPLATE = '''
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background: #0b1120; color: #e5e7eb; }
-        .navbar { background: #111827; }
-        .navbar-brand, .nav-link { color: #e5e7eb !important; }
-        .metric-card, .dashboard-card { border: 1px solid rgba(148, 163, 184, 0.18); background: rgba(15, 23, 42, 0.9); border-radius: 1rem; }
-        .metric-title { color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
-        .metric-value { font-size: 2rem; font-weight: 700; margin: 0; }
-        .metric-note { color: #94a3b8; font-size: 0.8rem; }
-        .status-pill { padding: 0.5rem 1rem; border-radius: 999px; font-weight: 700; }
-        .status-clear { background: #16a34a; color: #ecfccb; }
-        .status-alert { background: #dc2626; color: #fecaca; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #f8f9fa 100%); color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); }
+        .navbar-brand, .nav-link { color: #ffffff !important; font-weight: 500; }
+        .nav-link:hover { color: #f0f4ff !important; }
+        h1, h2, h3, h4, h5, h6 { color: #0f172a; font-weight: 600; }
+        .metric-card, .dashboard-card { border: none; background: #ffffff; border-radius: 1rem; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08); transition: transform 0.3s, box-shadow 0.3s; }
+        .metric-card:hover, .dashboard-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.12); }
+        .metric-title { color: #6b7280; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+        .metric-value { font-size: 2rem; font-weight: 700; margin: 0; color: #667eea; }
+        .metric-note { color: #9ca3af; font-size: 0.8rem; }
+        .status-pill { padding: 0.5rem 1rem; border-radius: 999px; font-weight: 700; font-size: 0.9rem; }
+        .status-clear { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: #ffffff; }
+        .status-alert { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: #ffffff; }
         .chart-card { min-height: 320px; }
         .alert-feed { max-height: 420px; overflow-y: auto; }
-        .alert-item { border-bottom: 1px solid rgba(148, 163, 184, 0.15); padding: 1rem 0; }
+        .alert-item { border-bottom: 1px solid #e5e7eb; padding: 1rem 0; color: #374151; }
         .alert-item:last-child { border-bottom: none; }
         .alert-severity { font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 999px; font-weight: 700; }
-        .alert-high { background: #dc2626; color: white; }
-        .alert-medium { background: #f97316; color: white; }
-        .alert-info { background: #2563eb; color: white; }
+        .alert-high { background: #fee2e2; color: #991b1b; }
+        .alert-medium { background: #fed7aa; color: #92400e; }
+        .alert-info { background: #dbeafe; color: #1e40af; }
         .top-summary { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-        .top-box { flex: 1 1 180px; padding: 1rem; background: rgba(255,255,255,0.04); border-radius: 1rem; border: 1px solid rgba(148, 163, 184, 0.18); }
-        .top-box h6 { margin-bottom: 0.5rem; color: #94a3b8; }
-        .top-box p { margin: 0; font-size: 1.6rem; font-weight: 700; }
+        .top-box { flex: 1 1 180px; padding: 1.25rem; background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%); border-radius: 1rem; border: 1px solid #e5e7eb; }
+        .top-box h6 { margin-bottom: 0.75rem; color: #6b7280; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+        .top-box p { margin: 0; font-size: 1.6rem; font-weight: 700; color: #667eea; }
+        .text-muted { color: #6b7280 !important; }
     </style>
 </head>
 <body>
@@ -631,7 +798,7 @@ DASHBOARD_TEMPLATE = '''
                 item.className = 'alert-item';
                 item.innerHTML = `
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div><strong>${alert.process_name || alert.event || 'Alert'}</strong></div>
+                        <div><strong>${alert.process_name || alert.rule_name || alert.event || 'Alert'}</strong></div>
                         <span class="alert-severity ${severityClass}">${severity}</span>
                     </div>
                     <div><small>${alert.explanation?.summary || alert.actionable?.what_happened || 'No explanation'}</small></div>
@@ -641,31 +808,22 @@ DASHBOARD_TEMPLATE = '''
             });
         }
 
-        async function refreshStatus() {
+        async function refreshLiveFeed() {
             try {
-                const res = await fetch('/status');
-                const status = await res.json();
+                const res = await fetch('/live-feed');
+                const payload = await res.json();
+                const status = payload.status || {};
+                const alerts = payload.alerts || [];
                 updateStatusDisplay(status);
                 addStatusPoint(status);
-            } catch (err) {
-                console.error('Status refresh failed', err);
-            }
-        }
-
-        async function refreshAlerts() {
-            try {
-                const res = await fetch('/alerts-json');
-                const alerts = await res.json();
                 renderAlerts(alerts);
             } catch (err) {
-                console.error('Alerts refresh failed', err);
+                console.error('Live feed refresh failed', err);
             }
         }
 
-        refreshStatus();
-        refreshAlerts();
-        setInterval(refreshStatus, 2000);
-        setInterval(refreshAlerts, 3000);
+        refreshLiveFeed();
+        setInterval(refreshLiveFeed, 3000);
     </script>
 </body>
 </html>
@@ -679,10 +837,18 @@ SECURITY_INTELLIGENCE_TEMPLATE = '''
     <title>CIS - Threat Intelligence</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background: #0f172a; color: #e2e8f0; }
-        .navbar { background: #111827; }
-        .card { background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(148, 163, 184, 0.18); }
-        .badge-recommendation { background: #2563eb; color: white; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #f8f9fa 100%); color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); }
+        .navbar-brand, .nav-link { color: #ffffff !important; font-weight: 500; }
+        .nav-link:hover { color: #f0f4ff !important; }
+        h1, h3, h4, h5, h6 { color: #0f172a; font-weight: 600; }
+        .card { background: #ffffff; border: none; color: #111827; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08); border-radius: 1rem; }
+        .card:hover { box-shadow: 0 6px 20px rgba(102, 126, 234, 0.12); }
+        .list-group-item { background: transparent; border: 1px solid #e5e7eb; color: #374151; }
+        .list-group-item h6 { color: #0f172a; font-weight: 600; }
+        .badge { font-weight: 600; padding: 0.35rem 0.75rem; border-radius: 0.5rem; }
+        .text-muted { color: #6b7280 !important; }
+        p { color: #374151; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -772,10 +938,20 @@ SELF_HEALING_TEMPLATE = '''
     <title>CIS - Self-Healing Response</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background: #0a0f1f; color: #e5e7eb; }
-        .navbar { background: #111827; }
-        .card { background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(148, 163, 184, 0.18); }
-        .action-card:hover { transform: translateY(-2px); }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #f8f9fa 100%); color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); }
+        .navbar-brand, .nav-link { color: #ffffff !important; font-weight: 500; }
+        .nav-link:hover { color: #f0f4ff !important; }
+        h3, h4, h5 { color: #0f172a; font-weight: 600; }
+        .card { background: #ffffff; border: none; color: #111827; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08); border-radius: 1rem; }
+        .card:hover { box-shadow: 0 6px 20px rgba(102, 126, 234, 0.12); }
+        .action-card { border: 1px solid #e5e7eb !important; }
+        .action-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.12) !important; border-color: #667eea !important; }
+        .list-group-item { background: transparent; border: 1px solid #e5e7eb; color: #374151; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; font-weight: 600; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+        .text-muted { color: #6b7280 !important; }
+        p { color: #374151; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -879,12 +1055,24 @@ BILLING_TEMPLATE = '''
     <title>CIS - Billing</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background: #f8f9fa; }
-        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .pricing-card { border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.1); transition: transform 0.3s; }
-        .pricing-card:hover { transform: translateY(-5px); }
-        .current-plan { border: 3px solid #28a745; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #f8f9fa 100%); color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); }
+        .navbar-brand, .nav-link { color: #ffffff !important; font-weight: 500; }
+        .nav-link:hover { color: #f0f4ff !important; }
+        h1, h3, h4, h5 { color: #0f172a; font-weight: 600; }
+        .pricing-card { border: 1px solid #e5e7eb; background: #ffffff; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08); border-radius: 1rem; transition: transform 0.3s, box-shadow 0.3s; }
+        .pricing-card:hover { transform: translateY(-5px); box-shadow: 0 12px 24px rgba(102, 126, 234, 0.15); border-color: #667eea; }
+        .current-plan { border: 2px solid #16a34a !important; background: linear-gradient(135deg, rgba(22, 163, 74, 0.05), rgba(22, 163, 74, 0.02)); }
         .price { font-size: 2rem; font-weight: bold; color: #667eea; }
+        .card { background: #ffffff; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08); border-radius: 1rem; }
+        .card h5 { color: #0f172a; font-weight: 600; }
+        .form-label { color: #374151; font-weight: 600; }
+        .form-control { border: 1px solid #d1d5db; background: #ffffff; color: #111827; }
+        .form-control:focus { border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25); }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; font-weight: 600; color: white; }
+        .btn-primary:hover { box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+        .text-muted { color: #6b7280 !important; }
+        li { color: #374151; }
     </style>
 </head>
 <body>
@@ -953,6 +1141,16 @@ BILLING_TEMPLATE = '''
         </div>
 
         <h3 class="mt-5 mb-3">Available Plans</h3>
+        <div class="mb-4">
+            <label class="form-label">Billing Cycle</label>
+            <div class="btn-group" role="group" aria-label="Billing period">
+                <input type="radio" class="btn-check" name="billingPeriod" id="billingMonthly" value="monthly" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="billingMonthly">Monthly</label>
+                <input type="radio" class="btn-check" name="billingPeriod" id="billingYearly" value="yearly" autocomplete="off">
+                <label class="btn btn-outline-primary" for="billingYearly">Yearly</label>
+            </div>
+            <p class="text-muted small mt-2">Yearly billing saves 2 months of fees compared to monthly pricing.</p>
+        </div>
         <div class="row">
             <div class="col-md-4">
                 <div class="card pricing-card p-3 {% if subscription.plan == 'free_trial' %}current-plan{% endif %}">
@@ -973,8 +1171,8 @@ BILLING_TEMPLATE = '''
             <div class="col-md-4">
                 <div class="card pricing-card p-3 {% if subscription.plan == 'pro' %}current-plan{% endif %}">
                     <h5>Pro</h5>
-                    <p class="text-muted small">Per endpoint/month</p>
-                    <p class="price">$6<span style="font-size: 1rem;">/endpoint</span></p>
+                    <p class="text-muted small">$6 / endpoint / month<br>$60 / endpoint / year</p>
+                    <p class="price"><span id="proPrice">$6</span><span style="font-size: 1rem;">/endpoint</span></p>
                     <ul class="list-unstyled small">
                         <li>✓ 50 endpoints</li>
                         <li>✓ Causal trace analysis</li>
@@ -991,8 +1189,8 @@ BILLING_TEMPLATE = '''
             <div class="col-md-4">
                 <div class="card pricing-card p-3 {% if subscription.plan == 'enterprise' %}current-plan{% endif %}">
                     <h5>Enterprise</h5>
-                    <p class="text-muted small">Per endpoint/month</p>
-                    <p class="price">$12<span style="font-size: 1rem;">/endpoint</span></p>
+                    <p class="text-muted small">$12 / endpoint / month<br>$120 / endpoint / year</p>
+                    <p class="price"><span id="enterprisePrice">$12</span><span style="font-size: 1rem;">/endpoint</span></p>
                     <ul class="list-unstyled small">
                         <li>✓ Unlimited endpoints</li>
                         <li>✓ All features</li>
@@ -1022,7 +1220,25 @@ BILLING_TEMPLATE = '''
             };
         }
 
+        function getBillingPeriod() {
+            const selected = document.querySelector('input[name="billingPeriod"]:checked');
+            return selected ? selected.value : 'monthly';
+        }
+
+        function updatePriceLabels() {
+            const period = getBillingPeriod();
+            document.getElementById('proPrice').textContent = period === 'monthly' ? '$6' : '$60';
+            document.getElementById('enterprisePrice').textContent = period === 'monthly' ? '$12' : '$120';
+        }
+
+        document.querySelectorAll('input[name="billingPeriod"]').forEach((radio) => {
+            radio.addEventListener('change', updatePriceLabels);
+        });
+
+        updatePriceLabels();
+
         async function upgradePlan(plan) {
+            const billingPeriod = getBillingPeriod();
             const endpoints = plan === 'enterprise' ? 1 : 10;
             const paymentMethod = collectPaymentMethod();
 
@@ -1031,7 +1247,7 @@ BILLING_TEMPLATE = '''
                 return;
             }
 
-            if (!confirm(`Upgrade to ${plan.toUpperCase()} for ${endpoints} endpoint(s)?`)) {
+            if (!confirm(`Upgrade to ${plan.toUpperCase()} (${billingPeriod}) for ${endpoints} endpoint(s)?`)) {
                 return;
             }
 
@@ -1044,6 +1260,7 @@ BILLING_TEMPLATE = '''
                     },
                     body: JSON.stringify({
                         plan: plan,
+                        billing_period: billingPeriod,
                         endpoints: endpoints,
                         payment_method: paymentMethod
                     })
@@ -1073,8 +1290,18 @@ ALERTS_TEMPLATE = '''
     <title>CIS - Alerts</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background: #f8f9fa; }
-        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #f8f9fa 100%); color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); }
+        .navbar-brand, .nav-link { color: #ffffff !important; font-weight: 500; }
+        .nav-link:hover { color: #f0f4ff !important; }
+        h1, h2, h3 { color: #0f172a; font-weight: 600; }
+        .table { background: #ffffff; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08); border-radius: 1rem; overflow: hidden; }
+        .table-dark { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; }
+        .table-dark th { font-weight: 600; border: none; }
+        .table tbody tr { border-bottom: 1px solid #e5e7eb; }
+        .table tbody tr:hover { background: linear-gradient(90deg, transparent 0%, rgba(102, 126, 234, 0.05) 100%); }
+        .badge { font-weight: 600; padding: 0.35rem 0.75rem; border-radius: 0.5rem; }
+        .text-muted { color: #6b7280 !important; }
     </style>
 </head>
 <body>
@@ -1124,8 +1351,15 @@ TRIAL_EXPIRED_TEMPLATE = '''
     <title>Trial Expired</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        body { background: #f8f9fa; display: flex; align-items: center; min-height: 100vh; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #f8f9fa 100%); display: flex; align-items: center; min-height: 100vh; color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
         .alert-container { max-width: 600px; }
+        .alert { border: none; border-radius: 1rem; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15); background: #fef2f2; border-left: 4px solid #dc2626; }
+        .alert-heading { color: #b91c1c; font-weight: 700; }
+        .alert p { color: #374151; line-height: 1.6; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; font-weight: 600; color: #ffffff; }
+        .btn-primary:hover { box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+        .btn-secondary { background: #e5e7eb; border: none; color: #374151; font-weight: 600; }
+        .btn-secondary:hover { background: #d1d5db; }
     </style>
 </head>
 <body>

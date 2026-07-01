@@ -11,7 +11,15 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    # `CIS_DASHBOARD_SECRET` is required by the test suite to initialize
+    # Flask sessions during automated runs. This value is safe for CI only
+    # (not used in production). Adjust or move to GitHub Secrets if needed.
+    env:
+      CIS_DASHBOARD_SECRET: ci_test_secret_012345678901234567890123
 
     steps:
       - name: Checkout repository
@@ -47,3 +55,75 @@ jobs:
           PYTHONPATH: cis
         run: |
           python -m pytest cis/tests -q
+
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    env:
+      SIEM_SHARED_SECRET: ${{ secrets.SIEM_SHARED_SECRET }}
+    needs: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install frontend dependencies
+        run: |
+          npm ci --prefix frontend
+
+      - name: Build frontend
+        run: |
+          npm run build --prefix frontend
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt
+
+      - name: Run backend unit tests
+        if: always()
+        run: |
+          if [ -d backend/tests ]; then python -m pytest backend/tests -q; else echo "No backend tests found"; fi
+
+      - name: Docker Compose smoke test
+        env:
+          COMPOSE_DOCKER_CLI_BUILD: 1
+          DOCKER_BUILDKIT: 1
+        run: |
+          if command -v docker-compose >/dev/null 2>&1; then
+            docker-compose up -d --build
+          else
+            docker compose up -d --build
+          fi
+
+      - name: Wait for services
+        run: |
+          sleep 5
+
+      - name: Health check backend
+        run: |
+          if curl --fail http://localhost:8000/; then
+            exit 0
+          fi
+          if command -v docker-compose >/dev/null 2>&1; then
+            docker-compose down && exit 1
+          else
+            docker compose down && exit 1
+          fi
+
+      - name: Tear down
+        if: always()
+        run: |
+          if command -v docker-compose >/dev/null 2>&1; then
+            docker-compose down --remove-orphans
+          else
+            docker compose down --remove-orphans
+          fi

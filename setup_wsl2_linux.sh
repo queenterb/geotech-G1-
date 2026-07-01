@@ -73,8 +73,8 @@ echo
 
 echo "Quick Start (non-root, synthetic events):"
 echo "  Terminal 1:"
-echo "    cd ${PROJECT_ROOT}/cis"
-echo "    python3 main_detector.py"
+echo "    cd ${PROJECT_ROOT}"
+echo "    python3 -m cis.service"
 echo
 echo "  Terminal 2:"
 echo "    cd ${PROJECT_ROOT}/cis"

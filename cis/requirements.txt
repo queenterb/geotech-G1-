@@ -3,4 +3,7 @@ psutil
 aiohttp
 torch
 Flask
+Flask-Login
 pytest
+requests
+opencv-python-headless

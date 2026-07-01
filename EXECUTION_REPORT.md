@@ -206,7 +206,10 @@ docker exec cis-detector tail -f /var/log/cis_alerts.jsonl
 
 ### 3️⃣ **Windows Prototype** (This execution)
 ```bash
-python .venv/Scripts/python.exe cis/main_detector.py
+```
+### 3️⃣ **Windows Prototype** (This execution)
+```bash
+.venv/Scripts/python.exe -m cis.service
 python cis/simulate_events.py --count 500 --write-ratio 0.98
 ```
 

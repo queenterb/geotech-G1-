@@ -23,8 +23,8 @@ This code is defensive and intended for controlled lab environments only.
    - `pip install -r requirements.txt`
 3. Train a baseline model and export TorchScript:
    - `python train.py --epochs 2 --save models/lstm_gnn_scripted.pt`
-4. Start the detector daemon:
-   - `python main_detector.py`
+4. Start the unified service (detector + portal):
+   - `python -m cis.service`
 
 The prototype mode uses:
 - pseudo-power estimates (instead of Intel RAPL)
@@ -48,8 +48,8 @@ On Linux, run:
 
 This will train a quick model, start the daemon, inject synthetic events, and verify that alerts are produced.
 
-## Sending Test Events to the Daemon
-`main_detector.py` listens for JSON lines on `/tmp/cis_ebpf_events.sock`.
+## Sending Test Events to the Service
+The unified service listens for JSON lines on `/tmp/cis_ebpf_events.sock`.
 
 Example JSON line format:
 
@@ -76,7 +76,7 @@ The container image in `../deploy/container/Dockerfile` is for prototype packagi
 Kernel eBPF loading and full hardware access still require host-level privileges and Linux support.
 
 ## Notes
-- `main_detector.py` expects JSONL events over a Unix domain socket at `/tmp/cis_ebpf_events.sock`.
+- The unified service (`cis.service`) expects JSONL events over a Unix domain socket at `/tmp/cis_ebpf_events.sock`.
 - Firecracker and ZFS integration are represented as stubs/placeholders in this prototype.
 - eBPF code is under `../ebpf` and requires Linux to compile/run.
 

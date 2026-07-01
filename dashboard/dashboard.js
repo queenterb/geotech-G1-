@@ -1,97 +1,157 @@
-// dashboard.js
-// This script fetches data from your backend and updates the dashboard UI.
+const WS_URL = 'ws://127.0.0.1:8000/ws/events';
+const ALERTS_API = 'http://127.0.0.1:8000/api/alerts';
 
-// --- CONFIG ---
-const ALERTS_API = 'http://127.0.0.1:5000/alerts'; // Update if your API endpoint is different
+const processRows = [
+    { name: 'suspicious_encryption.exe', pid: 4824, cpu: '45.2%', memory: '128.5 MB', status: 'Quarantined' },
+    { name: 'explorer.exe', pid: 2456, cpu: '2.1%', memory: '45.8 MB', status: 'Running' },
+    { name: 'chrome.exe', pid: 3788, cpu: '1.8%', memory: '89.2 MB', status: 'Running' },
+    { name: 'CIS_Service.exe', pid: 1620, cpu: '1.2%', memory: '12.4 MB', status: 'Protected' },
+];
 
-// --- Chart.js Setup ---
-const fileChartCtx = document.getElementById('fileChart').getContext('2d');
-const networkChartCtx = document.getElementById('networkChart').getContext('2d');
+const liveEvents = [
+    { time: '10:24:15', title: 'RANSOMWARE DETECTED', message: 'Process: suspicious_encryption.exe', type: 'high' },
+    { time: '10:24:13', title: 'FILE ENCRYPTION DETECTED', message: 'Multiple files being encrypted', type: 'medium' },
+    { time: '10:24:11', title: 'BEHAVIOR ANALYSIS', message: 'Suspicious behavior pattern matched', type: 'low' },
+    { time: '10:24:09', title: 'NETWORK CONNECTION', message: 'Connection to suspicious IP blocked', type: 'low' },
+    { time: '10:24:07', title: 'IMMUNE RESPONSE ACTIVATED', message: 'Process terminated and quarantined', type: 'info' },
+];
 
-const fileChart = new Chart(fileChartCtx, {
-    type: 'line',
-    data: {
-        labels: [],
-        datasets: [
-            { label: 'Modifications', data: [], borderColor: '#17a2b8', fill: false },
-            { label: 'Renames', data: [], borderColor: '#ffc107', fill: false }
-        ]
-    },
-    options: { responsive: true, plugins: { legend: { display: true } } }
-});
+function setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
 
-const networkChart = new Chart(networkChartCtx, {
-    type: 'line',
-    data: {
-        labels: [],
-        datasets: [
-            { label: 'Connections', data: [], borderColor: '#007bff', fill: false },
-            { label: 'Suspicious IPs', data: [], borderColor: '#dc3545', fill: false }
-        ]
-    },
-    options: { responsive: true, plugins: { legend: { display: true } } }
-});
+function setMetric(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
 
-// --- Fetch and Update Dashboard ---
-async function fetchAndUpdate() {
+function renderEventFeed(events) {
+    const container = document.getElementById('eventFeed');
+    if (!container) return;
+    container.innerHTML = '';
+    events.slice(0, 8).forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'alert-item';
+        card.innerHTML = `
+            <h4>${item.title}</h4>
+            <p>${item.message}</p>
+            <div class="meta"><span>${item.time}</span><span>${item.type.toUpperCase()}</span></div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function renderProcessTable(rows) {
+    const body = document.getElementById('processTableBody');
+    if (!body) return;
+    body.innerHTML = '';
+    rows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${row.name}</td>
+            <td>${row.pid}</td>
+            <td>${row.cpu}</td>
+            <td>${row.memory}</td>
+            <td><span class="process-status ${row.status.toLowerCase() === 'quarantined' ? 'status-quarantined' : row.status.toLowerCase() === 'running' ? 'status-running' : 'status-protected'}">${row.status}</span></td>
+        `;
+        body.appendChild(tr);
+    });
+}
+
+function renderMetrics() {
+    setText('mods', '0');
+    setText('renames', '0');
+    setText('entropy', '0');
+    setText('connections', '0');
+    setText('susp_ext', '0');
+    setText('susp_ips', '0');
+    setText('out_kbs', '0');
+    setText('c2_status', 'Clear');
+    setText('cpu-usage', '23%');
+    setText('mem-usage', '45%');
+    setText('disk-usage', '31%');
+    setText('network-usage', '12%');
+}
+
+function renderMapNodes() {
+    const map = document.getElementById('mapCanvas');
+    if (!map) return;
+    map.innerHTML = '';
+    const nodes = [
+        { top: '22%', left: '36%', delay: 0 },
+        { top: '40%', left: '52%', delay: 0.3 },
+        { top: '60%', left: '48%', delay: 0.6 },
+        { top: '55%', left: '70%', delay: 1 },
+    ];
+    nodes.forEach(node => {
+        const dot = document.createElement('div');
+        dot.className = 'attack-node';
+        dot.style.top = node.top;
+        dot.style.left = node.left;
+        dot.style.animationDelay = `${node.delay}s`;
+        map.appendChild(dot);
+    });
+}
+
+function updateClock() {
+    const now = new Date();
+    setText('clock', now.toLocaleTimeString('en-US', { hour12: true }));
+}
+
+function initWebSocket() {
+    const status = document.getElementById('feed-status');
     try {
-        const res = await fetch(ALERTS_API);
-        const alerts = await res.json();
-        updateMetrics(alerts);
-        updateCharts(alerts);
-        updateAlerts(alerts);
+        const ws = new WebSocket(WS_URL);
+        ws.addEventListener('open', () => { if (status) status.textContent = 'WS Connected'; });
+        ws.addEventListener('message', event => {
+            const payload = JSON.parse(event.data);
+            if (payload.type === 'alert') {
+                const next = {
+                    time: new Date().toLocaleTimeString('en-US', { hour12: true }),
+                    title: payload.data.event_type || 'ALERT',
+                    message: payload.data.description || JSON.stringify(payload.data.payload || {}),
+                    type: payload.data.severity || 'high',
+                };
+                liveEvents.unshift(next);
+                renderEventFeed(liveEvents);
+            }
+        });
+        ws.addEventListener('close', () => { if (status) status.textContent = 'WS Disconnected'; });
+        ws.addEventListener('error', () => { if (status) status.textContent = 'WS Error'; });
     } catch (e) {
-        document.getElementById('system-status').textContent = '⚠️ SYSTEM OFFLINE';
-        document.getElementById('system-status').className = 'status-danger';
+        if (status) status.textContent = 'WS Error';
     }
 }
 
-function updateMetrics(alerts) {
-    // Example: Calculate metrics from alerts (customize as needed)
-    document.getElementById('mods').textContent = alerts.length;
-    document.getElementById('renames').textContent = alerts.filter(a => a.event_type === 'rename').length;
-    document.getElementById('entropy').textContent = (Math.random() * 8).toFixed(2); // Placeholder
-    document.getElementById('connections').textContent = Math.floor(Math.random() * 20); // Placeholder
-    document.getElementById('susp_ext').textContent = alerts.filter(a => a.suspicious_ext).length;
-    document.getElementById('susp_ips').textContent = alerts.filter(a => a.suspicious_ip).length;
-    document.getElementById('out_kbs').textContent = Math.floor(Math.random() * 100); // Placeholder
-    document.getElementById('c2_status').textContent = 'Clear'; // Placeholder
+async function loadLiveAlerts() {
+    try {
+        const response = await fetch(ALERTS_API);
+        if (!response.ok) throw new Error('Fetch failed');
+        const alerts = await response.json();
+        setText('events-today', alerts.length.toString());
+        setText('threat-level', alerts.some(a => a.severity === 'high') ? 'HIGH' : 'MEDIUM');
+        setText('process-count', processRows.length.toString());
+    } catch (err) {
+        console.warn('Live alert fetch failed:', err);
+    }
 }
 
-function updateAlerts(alerts) {
-    const alertsList = document.getElementById('alerts');
-    alertsList.innerHTML = '';
-    document.getElementById('alert-count').textContent = alerts.length;
-    alerts.slice(-20).reverse().forEach(alert => {
-        const li = document.createElement('li');
-        li.className = 'list-group-item ' + (alert.immune_alarm ? 'alert-high' : alert.heuristic_alarm ? 'alert-low' : 'alert-info');
-        li.innerHTML = `
-            <b>Process:</b> ${alert.process_name || ''} <b>PID:</b> ${alert.pid} <b>File:</b> ${alert.file_affected || ''}<br>
-            <b>What happened:</b> ${alert.actionable ? alert.actionable.what_happened : ''}<br>
-            <b>What to do:</b> ${alert.actionable ? alert.actionable.what_to_do : ''}<br>
-            <b>Timestamp:</b> ${new Date(alert.timestamp * 1000).toLocaleString()}<br>
-            <b>False Positive:</b> ${alert.false_positive ? 'Yes' : 'No'}
-        `;
-        alertsList.appendChild(li);
-    });
-}
-networkChart.data.datasets[0].data = Array.from({ length: 10 }, () => Math.floor(Math.random() * 20));
-networkChart.data.datasets[1].data = Array.from({ length: 10 }, () => Math.floor(Math.random() * 3));
-networkChart.update();
-}
-
-function updateAlerts(alerts) {
-    const alertsList = document.getElementById('alerts');
-    alertsList.innerHTML = '';
-    document.getElementById('alert-count').textContent = alerts.length;
-    alerts.slice(-20).reverse().forEach(alert => {
-        const li = document.createElement('li');
-        li.className = 'list-group-item ' + (alert.immune_alarm ? 'alert-high' : alert.heuristic ? 'alert-low' : 'alert-info');
-        li.innerHTML = `<b>${alert.event_type || 'ALERT'}</b> | PID: ${alert.pid} | <span class="text-muted">${new Date(alert.timestamp * 1000).toLocaleTimeString()}</span><br>${JSON.stringify(alert)}`;
-        alertsList.appendChild(li);
+function initPage() {
+    setText('attack-origin', '192.168.1.105');
+    setText('target-system', 'DESKTOP-8G7JH2K');
+    renderMetrics();
+    renderEventFeed(liveEvents);
+    renderProcessTable(processRows);
+    renderMapNodes();
+    updateClock();
+    initWebSocket();
+    loadLiveAlerts();
+    setInterval(updateClock, 1000);
+    document.getElementById('refreshLive')?.addEventListener('click', () => {
+        loadLiveAlerts();
+        renderEventFeed(liveEvents);
     });
 }
 
-// --- Poll every 3 seconds ---
-setInterval(fetchAndUpdate, 3000);
-fetchAndUpdate();
+initPage();

@@ -1,0 +1,67 @@
+t=2026-06-30T14:43:07+0100 lvl=info msg="no configuration paths supplied"
+t=2026-06-30T14:43:07+0100 lvl=dbug msg="ngrok config file at legacy location does not exist" legacy_path=C:\\Users\\TECHWAVE\\.ngrok2\\ngrok.yml
+t=2026-06-30T14:43:07+0100 lvl=info msg="using configuration at default config path" path=C:\\Users\\TECHWAVE\\AppData\\Local\\ngrok\\ngrok.yml
+t=2026-06-30T14:43:07+0100 lvl=info msg="open config file" path=C:\\Users\\TECHWAVE\\AppData\\Local\\ngrok\\ngrok.yml err=nil
+t=2026-06-30T14:43:07+0100 lvl=info msg="FIPS 140 mode" enabled=false
+t=2026-06-30T14:43:08+0100 lvl=dbug msg="starting component" obj=app name="Tunnel session"
+t=2026-06-30T14:43:08+0100 lvl=dbug msg="starting component" obj=app name=web
+t=2026-06-30T14:43:08+0100 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4040 allow_hosts=[]
+t=2026-06-30T14:43:08+0100 lvl=dbug msg="starting component" obj=app name=updater
+t=2026-06-30T14:43:08+0100 lvl=dbug msg="starting component" obj=app name="signal handler"
+t=2026-06-30T14:43:08+0100 lvl=dbug msg="connecting to" obj=tunnels.session addr=connect.ngrok-agent.com:443
+t=2026-06-30T14:43:08+0100 lvl=dbug msg="checking for updates periodically" obj=updater interval=6h0m0s
+t=2026-06-30T14:43:09+0100 lvl=dbug msg="check for update" obj=updater
+t=2026-06-30T14:43:09+0100 lvl=dbug msg=dial obj=tunnels.session network=tcp address=connect.ngrok-agent.com:443 timeout=10s
+t=2026-06-30T14:43:11+0100 lvl=dbug msg="no crl found" issuer_subject="CN=connect.ngrok-agent.com,O=ngrok Inc.,L=San Francisco,ST=California,C=US"
+t=2026-06-30T14:43:11+0100 lvl=dbug msg="no crl found" issuer_subject="CN=Intermediate CA,OU=prod,O=ngrok Inc,ST=California,C=US"
+t=2026-06-30T14:43:11+0100 lvl=dbug msg="overriding CRL distribution point" issuer_subject="CN=Root CA,OU=prod,O=ngrok Inc,L=San Francisco,ST=California,C=US" previous=http://crl.ngrok.com/ngrok.crl new=http://crl.ngrok-agent.com/ngrok.crl
+t=2026-06-30T14:43:11+0100 lvl=dbug msg="checking crl" issuer_subject="CN=Root CA,OU=prod,O=ngrok Inc,L=San Francisco,ST=California,C=US" url=http://crl.ngrok-agent.com/ngrok.crl
+t=2026-06-30T14:43:12+0100 lvl=dbug msg="successful verify of CRL" issuer_subject="CN=Root CA,OU=prod,O=ngrok Inc,L=San Francisco,ST=California,C=US" url=http://crl.ngrok-agent.com/ngrok.crl check_cert="CN=Root CA,OU=prod,O=ngrok Inc,L=San Francisco,ST=California,C=US"
+t=2026-06-30T14:43:12+0100 lvl=dbug msg="found valid crl" issuer_subject="CN=Root CA,OU=prod,O=ngrok Inc,L=San Francisco,ST=California,C=US" url=http://crl.ngrok-agent.com/ngrok.crl
+t=2026-06-30T14:43:12+0100 lvl=dbug msg="open stream" obj=tunnels.session obj=csess id=d0e22d198fe7 reqtype=0 err=nil
+t=2026-06-30T14:43:12+0100 lvl=dbug msg="encode request" obj=tunnels.session obj=csess id=d0e22d198fe7 sid=3 req="&{Version:[3 2] ClientID: Extra:{OS:windows Arch:amd64 Authtoken:HIDDEN Version:3.39.8 Hostname: UserAgent:ngrok-agent-go/3.39.8 ({\"proxy_type\":\"none\",\"config_version\":\"3\",\"agent_binary_path\":\"C:\\\\s\\\\ngrok-v3\\\\ngrok.exe\",\"host_uptime_seconds\":15624,\"machine_hostname\":\"DESKTOP-7Q4ECT1\",\"machine_name\":\"DESKTOP-7Q4ECT1\",\"os_distro\":\"Microsoft Windows 11 Pro\",\"os_version\":\"21H2\",\"agent_pid\":10040,\"hashed_hardware_address\":\"7999331de5ad6f081b39fc0259d5b70fc48c1a79f9a65efdde301928e6ef3dad\",\"windows_analytics\":{}}) ngrok-go/1.12.1 Metadata: Cookie: HeartbeatInterval:10000000000 HeartbeatTolerance:15000000000 Fingerprint:<nil> UpdateUnsupportedError:0x20b3f7030820 StopUnsupportedError:0x20b3f7030820 RestartUnsupportedError:0x20b3f7030630 ProxyType: MutualTLS:false ServiceRun:false ConfigVersion: CustomInterface:false CustomCAs:false ClientType:ngrok-agent-go LegNumber:0}}" err=nil
+t=2026-06-30T14:43:13+0100 lvl=dbug msg="decoded response" obj=tunnels.session obj=csess id=d0e22d198fe7 sid=3 resp="&{Version:3 ClientID:f23d7547d7ef668425847c64c084c801 Error: Extra:{Version:prod Region:eu Cookie:2pQ7MzIe4BXQddgxd9LGbV4mYRe1+yba$ggQtdJOtqvCn2NrHkv1H7sfc2kD+Vn0QHhxGox0nSWOqDxRpTB4LmIz3WuPb5wY65/ahcb9hqFFN0kxyeLT716rb+KNp/UnVYKsBi5apJRMUGQqrJvKFWqDWKxcCBQLzIgp4/OlnEYCKbseQ5k3H7RjGsm3Me82PThZx7IZefavSoY/uTtZ7Pcz1yHem+ALuyWkgY4r5FYbTgU6A94hQSrsJw/qOf/G1cFwZ55OmuA== AccountName:Fonkem Godson SessionDuration:0 PlanName:Free Banner:Request early access to new features: https://dashboard.ngrok.com/early-access DeprecationWarning:<nil> ConnectAddresses:[]}}" err=nil
+t=2026-06-30T14:43:13+0100 lvl=info msg="client session established" obj=tunnels.session
+t=2026-06-30T14:43:13+0100 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2026-06-30T14:43:13+0100 lvl=dbug msg="received extras" obj=tunnels.session region=eu version=prod
+t=2026-06-30T14:43:13+0100 lvl=dbug msg="open stream" obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 reqtype=1 err=nil
+t=2026-06-30T14:43:13+0100 lvl=dbug msg="encode request" obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 sid=7 req="&{ID: ClientID: Proto:https ForwardsTo:http://localhost:8000 ForwardsProto: Opts:0x20b3f6fb6780 Extra:{Name:command_line Token: IPPolicyRef: Metadata: Description: Bindings:[] PoolingEnabled:false}}" err=nil
+t=2026-06-30T14:43:13+0100 lvl=dbug msg="decoded response" obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 sid=7 resp="&{ClientID:cc4e5f5a3c73c1549655414054ad0562 URL:https://broker-error-sublevel.ngrok-free.dev Proto:https Opts:map[Auth: BasicAuth:<nil> CircuitBreaker:<nil> Compression:<nil> Domain: HostHeaderRewrite:false Hostname:broker-error-sublevel.ngrok-free.dev IPRestriction:<nil> LocalURLScheme: MutualTLSCA:<nil> OAuth:<nil> OIDC:<nil> Policy:<nil> ProxyProto:0 RequestHeaders:<nil> ResponseHeaders:<nil> Subdomain: TrafficPolicy: URL: UpstreamCAPEM:<nil> UserAgentFilter:<nil> VerifyUpstreamTLS:false WebhookVerification:<nil> WebsocketTCPConverter:<nil>] Error: Extra:{Token:LOsZn/YgnwwKSSg2o+tmbv7w14bW+ah4$ng7ZrMUQO5yYkkE9t+9UUMzyAtrHvMPKOQ2NJkhbdPWzjEf+2qYViHyi/18ototLn19kgnQrXF2mGZtHrQpFawP+pQ90UyJ/wYTRlK6BSGD3V9jZjrTEjHolJldDwcIDqe26JSjYAeyAuPt7hoDyZjHSDiASQWkbGiaVzKX6nLpLPkvQIPJIcjHaVZGBm6rALzxpsc/97EUWT8odSDC7NoEN78nyuChd1GJDGnV1Om/o79fe5ExaW8AtYhKEOHCFZf9DNTGbeVDWgzlAgKIKsjbPYHTyN2Bb3QgVHHSaKm2EBn8qyb5k5O/u8FgvBaa+VdVV6OoMQ15fqgOv9p+WhffJuVsD0eSYljbN/jOmbaZ8mVz9qWW3y7LRGV8Bjc9kM+bulQTaTnmcrqYQeyWzYDhNYBJ4sbIaX5hCuyKPuOLOVtZxUAxIbhy/WrtMMPorgKqi78E8wxb5tz6ZLVff9UD6rK4qGfFeh/4Y2rHNEyVm0wa1cn7RAyZIJFt/SzeZv+PHhAM2coUXODxlc/AN5pqZ7sq4JQ0mfXIVXopeeSM64lt8pB9IluNWaNvBpj53lmjJnqOkZczWvONeKiHS2DrJfwEXsy1QrJC2fQDGkaxbihAaBBq7KhydV9eDqdp0WZQ8J0iBF29Bdr4O6pOgB+Y28TAvjZPqZ6rDfJivlsjUZDl/TAxuDyqZM2Cor6AZZOav0ipg8lDbnCPxXqdkc2Ew8CzUp02bpK/Z+h/G8LAFWEPTXuU5QOD7l2KXwOMjPIgboBaPEC9tHCG4nDVlIl/0ZoGyr/OLkExiGh0=}}" err=nil
+t=2026-06-30T14:43:13+0100 lvl=dbug msg="start tunnel listen" obj=tunnels.session name=command_line proto=https opts="&{URL: Domain: Hostname: Subdomain: Auth: HostHeaderRewrite:false LocalURLScheme:http ProxyProto:0 VerifyUpstreamTLS:false UpstreamCAPEM:[] Compression:<nil> CircuitBreaker:<nil> IPRestriction:<nil> BasicAuth:<nil> OAuth:<nil> OIDC:<nil> WebhookVerification:<nil> MutualTLSCA:<nil> RequestHeaders:<nil> ResponseHeaders:<nil> WebsocketTCPConverter:<nil> UserAgentFilter:<nil> Policy:<nil> TrafficPolicy:}" labels=map[] err=nil
+t=2026-06-30T14:43:13+0100 lvl=info msg="started tunnel" obj=tunnels name=command_line addr=http://localhost:8000 url=https://broker-error-sublevel.ngrok-free.dev
+t=2026-06-30T14:43:14+0100 lvl=warn msg="failed to check for update" obj=updater err="Post \"https://update.ngrok-agent.com/check\": context deadline exceeded"
+t=2026-06-30T14:43:17+0100 lvl=info msg=start pg=/api/tunnels id=10c96619aa7ee78b
+t=2026-06-30T14:43:17+0100 lvl=info msg=end pg=/api/tunnels id=10c96619aa7ee78b status=200 dur=2.286ms
+t=2026-06-30T14:43:23+0100 lvl=dbug msg="heartbeat received" obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 latency_ms=232
+t=2026-06-30T14:43:33+0100 lvl=dbug msg="heartbeat received" obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 latency_ms=160
+t=2026-06-30T14:43:33+0100 lvl=dbug msg="tunnel Accept" obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 reqType=3 remoteAddr=[2a05:d014:21b:8e01:1688:8f4e:c7e5:2909]:443
+t=2026-06-30T14:43:33+0100 lvl=dbug msg="dial private connection" id=95999fdea2a6 addr=localhost:8000 err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg="joining tunnel conn to backend" id=95999fdea2a6 header="{ID:cc4e5f5a3c73c1549655414054ad0562 ClientAddr:[2605:59c0:1e1e:3008:c445:f01a:c7ba:d028]:54926 Proto:https EdgeType:0 PassthroughTLS:false}"
+t=2026-06-30T14:43:33+0100 lvl=info msg="join connections" obj=join id=0f5095df5c16 l=127.0.0.1:8000 r=[2605:59c0:1e1e:3008:c445:f01a:c7ba:d028]:54926
+t=2026-06-30T14:43:33+0100 lvl=dbug msg="got request" id=bcd414bed569 typ=proxy path=/
+t=2026-06-30T14:43:33+0100 lvl=dbug msg="add entry" obj=storage entrysz=262 sz=0
+t=2026-06-30T14:43:33+0100 lvl=dbug msg="add entry" obj=storage entrysz=262 sz=0
+t=2026-06-30T14:43:33+0100 lvl=dbug msg="got response for request" id=bcd414bed569 typ=proxy reqpath=/
+t=2026-06-30T14:43:33+0100 lvl=dbug msg="add entry" obj=storage entrysz=471 sz=0
+t=2026-06-30T14:43:33+0100 lvl=dbug msg="half join complete" obj=join id=0f5095df5c16 from=127.0.0.1:8000 to=[2605:59c0:1e1e:3008:c445:f01a:c7ba:d028]:54926 nbytes=408 err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=close obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 id=679078fc9771 type=proxy sess=f23d7547d7ef668425847c64c084c801 err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=close id=bcd414bed569 typ=proxy err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg="half join complete" obj=join id=0f5095df5c16 from=[2605:59c0:1e1e:3008:c445:f01a:c7ba:d028]:54926 to=127.0.0.1:8000 nbytes=262 err="readfrom tcp 127.0.0.1:54929->127.0.0.1:8000: stream closed"
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=http.ReadRequest id=bcd414bed569 typ=proxy err=EOF
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=close id=95999fdea2a6 err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=close obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 id=679078fc9771 type=proxy sess=f23d7547d7ef668425847c64c084c801 err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=close id=bcd414bed569 typ=proxy err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=close id=95999fdea2a6 err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=close obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 id=679078fc9771 type=proxy sess=f23d7547d7ef668425847c64c084c801 err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg="add entry" obj=storage entrysz=670 sz=0
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=http.ReadResponse id=bcd414bed569 typ=proxy err="unexpected EOF"
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=close id=bcd414bed569 typ=proxy err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=close obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 id=679078fc9771 type=proxy sess=f23d7547d7ef668425847c64c084c801 err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=close id=bcd414bed569 typ=proxy err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=close obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 id=679078fc9771 type=proxy sess=f23d7547d7ef668425847c64c084c801 err=nil
+t=2026-06-30T14:43:33+0100 lvl=dbug msg=close id=bcd414bed569 typ=proxy err=nil
+t=2026-06-30T14:43:43+0100 lvl=dbug msg="heartbeat received" obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 latency_ms=166
+t=2026-06-30T14:43:53+0100 lvl=dbug msg="heartbeat received" obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 latency_ms=199
+t=2026-06-30T14:44:03+0100 lvl=dbug msg="heartbeat received" obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 latency_ms=500
+t=2026-06-30T14:44:13+0100 lvl=dbug msg="heartbeat received" obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 latency_ms=379
+t=2026-06-30T14:44:23+0100 lvl=dbug msg="heartbeat received" obj=tunnels.session obj=csess id=d0e22d198fe7 clientid=f23d7547d7ef668425847c64c084c801 latency_ms=244

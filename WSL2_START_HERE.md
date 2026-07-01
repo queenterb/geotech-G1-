@@ -21,6 +21,7 @@ I've created complete setup automation for deploying the CIS eBPF system on Wind
 - `ebpf/Makefile` — Automated compilation
 
 ✅ **Production-Grade Python Runtime**
+- `cis/service.py` — Unified service (detector + portal)
 - `cis/main_detector.py` — Core orchestration engine
 - `cis/model.py` — LSTM-GNN with PyTorch integration
 - `cis/immune_memory.py` — Clonal selection antibody pool
@@ -83,16 +84,17 @@ ls -lh detector_loader
 
 Verify core detection logic:
 
-**Terminal 1** — Start detector on Unix socket:
+**Terminal 1** — Start detector + portal on Unix socket:
 ```bash
-cd ~/cis_project/cis
-python3 main_detector.py
+cd ~/cis_project
+python3 -m cis.service
 ```
 
 Expected:
 ```
 2026-04-13 12:15 INFO listening on /tmp/cis_ebpf_events.sock
 2026-04-13 12:15 INFO cis main started
+2026-04-13 12:15 INFO CIS Portal running on http://0.0.0.0:8000
 ```
 
 **Terminal 2** — Inject synthetic events:
@@ -192,7 +194,7 @@ tail -f /tmp/cis_main.log
 You'll know it's working when:
 
 1. ✅ `make all` completes without errors
-2. ✅ `python3 main_detector.py` shows "listening on /tmp/cis_ebpf_events.sock"
+2. ✅ `python3 -m cis.service` shows "listening on /tmp/cis_ebpf_events.sock"
 3. ✅ `tail -f /tmp/cis_alerts.jsonl` shows alert records appearing (within 5 seconds of event injection)
 4. ✅ `sudo bpftool prog list` shows 2 tracepoint programs loaded
 5. ✅ `sudo ./deploy/scripts/smoke_test.sh` reports "SMOKE TEST PASS"
@@ -217,8 +219,9 @@ uname -r
 # View compiler output
 cd ~/cis_project/ebpf && make clean && make 2>&1 | tail -20
 
-# Monitor detector startup
-cd ~/cis_project/cis && python3 main_detector.py 2>&1 | head -20
+# Monitor detector startup (unified service)
+# from project root run the combined detector + portal
+cd ~/cis_project && python3 -m cis.service 2>&1 | head -20
 ```
 
 ---

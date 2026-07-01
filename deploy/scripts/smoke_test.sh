@@ -10,7 +10,8 @@ LOG_FILE="/tmp/cis_smoke_main.log"
 ALERT_FILE="/tmp/cis_alerts.jsonl"
 rm -f "${LOG_FILE}" "${ALERT_FILE}" /tmp/cis_ebpf_events.sock
 
-python3 main_detector.py --alerts-file "${ALERT_FILE}" > "${LOG_FILE}" 2>&1 &
+# Start unified service and point alerts file via env var
+CIS_ALERTS_FILE="${ALERT_FILE}" python3 -m cis.service > "${LOG_FILE}" 2>&1 &
 MAIN_PID=$!
 trap 'kill ${MAIN_PID} >/dev/null 2>&1 || true' EXIT
 

@@ -2,8 +2,8 @@
 # This script uses PyInstaller to bundle the agent and Inno Setup to create an installer.
 # For Linux, use fpm or dpkg-deb. For Mac, use pkgbuild.
 
-# 1. Build executable with PyInstaller
-pyinstaller --onefile cis/main_detector.py --name CISAgent
+# 1. Build executable with PyInstaller (package the unified service)
+pyinstaller --onefile cis/service.py --name CISAgent
 
 # 2. Create Inno Setup script (CISAgent.iss)
 # [Setup]

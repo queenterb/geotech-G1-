@@ -103,8 +103,8 @@ echo make clean
 echo make all
 echo.
 echo 5. Test the system:
-echo cd ~/cis_project/cis
-echo python3 main_detector.py
+echo cd ~/cis_project
+echo python3 -m cis.service
 echo.
 echo (In another terminal in WSL2:)
 echo python3 ~/cis_project/cis/simulate_events.py --count 500 --write-ratio 0.98
