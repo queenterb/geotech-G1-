@@ -96,7 +96,7 @@ jobs:
       - name: Docker Compose smoke test
         uses: docker/compose-action@v2
         with:
-          compose-file: docker-compose.yml
+          files: docker-compose.yml
           run: up -d --build
 
       - name: Wait for services
@@ -105,9 +105,9 @@ jobs:
 
       - name: Health check backend
         run: |
-          curl --fail http://localhost:8000/ || (docker-compose down && exit 1)
+          curl --fail http://localhost:8000/ || (docker compose down && exit 1)
 
       - name: Tear down
         if: always()
         run: |
-          docker-compose down --remove-orphans
+          docker compose down --remove-orphans
