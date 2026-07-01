@@ -94,10 +94,15 @@ jobs:
           if [ -d backend/tests ]; then python -m pytest backend/tests -q; else echo "No backend tests found"; fi
 
       - name: Docker Compose smoke test
-        uses: docker/compose-action@v2
-        with:
-          files: docker-compose.yml
-          run: up -d --build
+        env:
+          COMPOSE_DOCKER_CLI_BUILD: 1
+          DOCKER_BUILDKIT: 1
+        run: |
+          if command -v docker-compose >/dev/null 2>&1; then
+            docker-compose up -d --build
+          else
+            docker compose up -d --build
+          fi
 
       - name: Wait for services
         run: |
@@ -105,9 +110,20 @@ jobs:
 
       - name: Health check backend
         run: |
-          curl --fail http://localhost:8000/ || (docker compose down && exit 1)
+          if curl --fail http://localhost:8000/; then
+            exit 0
+          fi
+          if command -v docker-compose >/dev/null 2>&1; then
+            docker-compose down && exit 1
+          else
+            docker compose down && exit 1
+          fi
 
       - name: Tear down
         if: always()
         run: |
-          docker compose down --remove-orphans
+          if command -v docker-compose >/dev/null 2>&1; then
+            docker-compose down --remove-orphans
+          else
+            docker compose down --remove-orphans
+          fi
