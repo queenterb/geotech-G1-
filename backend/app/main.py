@@ -27,6 +27,16 @@ try:
 except Exception:
     pass
 
+# Start background Redis consumer if available
+try:
+    from app.redis_consumer import consume_forever
+    @app.on_event("startup")
+    async def start_redis_consumer():
+        import asyncio
+        asyncio.create_task(consume_forever())
+except Exception:
+    pass
+
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}

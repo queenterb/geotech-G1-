@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+import json
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.alert import create_alert, get_alerts
@@ -59,8 +60,17 @@ async def create_alert_endpoint(request: Request, alert_in: AlertCreate, db: Asy
         # fire-and-forget broadcast
         try:
             import asyncio
-
+            # broadcast via local WebSocket manager
             asyncio.create_task(manager.broadcast({"type": "alert", "data": payload}))
+            # also publish to Redis stream so other instances can pick it up
+            try:
+                from app.utils.redis_client import get_redis
+
+                r = get_redis()
+                # store JSON under field 'data'
+                asyncio.create_task(r.xadd('alerts', {'data': json.dumps(payload)}))
+            except Exception:
+                pass
         except Exception:
             # If broadcasting fails, don't block alert creation
             pass
