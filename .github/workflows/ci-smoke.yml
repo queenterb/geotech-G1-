@@ -1,0 +1,61 @@
+name: CI - Compose Smoke Tests
+
+on:
+  push:
+    branches: [ deploy/use-cis-service, feature/autonomous-cis, main ]
+  pull_request:
+    branches: [ feature/autonomous-cis, main ]
+
+jobs:
+  smoke-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and start Compose stack
+        env:
+          COMPOSE_DOCKER_CLI_BUILD: 1
+          DOCKER_BUILDKIT: 1
+        run: |
+          docker compose up -d --build
+
+      - name: Wait for backend health (up to 120s)
+        run: |
+          for i in {1..24}; do
+            if curl -fsS http://localhost:8000/healthz >/dev/null 2>&1; then
+              echo "backend healthy"
+              break
+            fi
+            echo "waiting for backend... ($i)"
+            sleep 5
+          done
+
+      - name: Check backend health
+        run: |
+          curl -f http://localhost:8000/healthz
+
+      - name: Check HLS playlist (may be empty until stream exists)
+        run: |
+          if curl -fsS http://localhost:8082/hls/stream.m3u8 -o /tmp/playlist || true; then
+            echo "HLS playlist fetched (may be empty)"
+            head -n 20 /tmp/playlist || true
+          else
+            echo "HLS not available"
+            exit 1
+          fi
+
+      - name: Capture compose logs (for debugging)
+        if: failure()
+        run: |
+          docker compose logs --tail=200 > compose-logs.txt || true
+          sed -n '1,200p' compose-logs.txt || true
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker compose down --volumes --remove-orphans

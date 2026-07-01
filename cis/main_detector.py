@@ -307,7 +307,11 @@ class EBpfCollector:
 class CISMain:
     def _forward_alert(self, payload: dict):
         siem_log_file = self.config.get("siem_log_file")
-        siem_http_endpoint = self.config.get("siem_http_endpoint")
+        # Allow override via environment variable CIS_SIEM_HTTP_ENDPOINT for direct integration
+        siem_http_endpoint = self.config.get("siem_http_endpoint") or os.environ.get("CIS_SIEM_HTTP_ENDPOINT")
+        # Support API key or Bearer token via config or environment variables
+        siem_api_key = self.config.get("siem_api_key") or os.environ.get("CIS_SIEM_API_KEY")
+        siem_bearer = self.config.get("siem_bearer_token") or os.environ.get("CIS_SIEM_BEARER_TOKEN")
         # Forward to external log file
         if siem_log_file:
             try:
@@ -316,10 +320,15 @@ class CISMain:
                 self.logger.info(f"Alert forwarded to SIEM log file: {siem_log_file}")
             except Exception as e:
                 self.logger.warning(f"Failed to forward alert to SIEM log file: {e}")
-        # Forward to HTTP endpoint
+        # Forward to HTTP endpoint with optional auth headers
         if siem_http_endpoint:
             try:
-                resp = requests.post(siem_http_endpoint, json=payload, timeout=5)
+                headers = {}
+                if siem_api_key:
+                    headers["X-API-Key"] = siem_api_key
+                elif siem_bearer:
+                    headers["Authorization"] = f"Bearer {siem_bearer}"
+                resp = requests.post(siem_http_endpoint, json=payload, headers=headers or None, timeout=5)
                 self.logger.info(f"Alert forwarded to SIEM HTTP endpoint: {siem_http_endpoint} (status {resp.status_code})")
             except Exception as e:
                 self.logger.warning(f"Failed to forward alert to SIEM HTTP endpoint: {e}")

@@ -144,7 +144,14 @@ def init_database():
         cursor.execute("ALTER TABLE subscriptions ADD COLUMN billing_period TEXT DEFAULT 'monthly'")
     if 'endpoints' not in existing_columns:
         cursor.execute("ALTER TABLE subscriptions ADD COLUMN endpoints INTEGER DEFAULT 0")
-    
+
+    cursor.execute("PRAGMA table_info(sessions)")
+    session_columns = [row[1] for row in cursor.fetchall()]
+    if 'last_seen_at' not in session_columns:
+        cursor.execute("ALTER TABLE sessions ADD COLUMN last_seen_at TIMESTAMP")
+    if 'revoked_at' not in session_columns:
+        cursor.execute("ALTER TABLE sessions ADD COLUMN revoked_at TIMESTAMP")
+
     conn.commit()
     conn.close()
 

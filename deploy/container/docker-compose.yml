@@ -20,6 +20,9 @@ services:
     environment:
       - CIS_HOST=0.0.0.0
       - CIS_PORT=8000
+      - CIS_SIEM_HTTP_ENDPOINT=http://backend:8000/api/alerts
+      - CIS_SIEM_BEARER_TOKEN=dev_cis_token_change_me
+      - SIEM_SHARED_SECRET=dev_cis_token_change_me
     command: [ "python", "-m", "cis.service" ]
 
   cis-sidechannel:

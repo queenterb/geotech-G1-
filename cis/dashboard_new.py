@@ -386,13 +386,54 @@ def alerts_json():
     alerts_list = []
     if os.path.exists(alerts_file):
         try:
-            with open(alerts_file, "r") as f:
+            with open(alerts_file, "r", encoding="utf-8") as f:
                 for line in f:
                     if line.strip():
                         alerts_list.append(annotate_alert(json.loads(line)))
         except Exception as e:
             return jsonify({"error": str(e)}), 400
     return jsonify(alerts_list[-20:])
+
+@app.route("/telemetry-json")
+@login_required
+@require_license
+def telemetry_json():
+    telemetry_file = os.environ.get("CIS_TELEMETRY_STORAGE_PATH", os.path.join(os.environ.get("TEMP", "/tmp"), "cis_live_events.jsonl"))
+    events = []
+    if os.path.exists(telemetry_file):
+        try:
+            with open(telemetry_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        events.append(json.loads(line))
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
+    return jsonify(events[-20:])
+
+@app.route("/live-feed")
+@login_required
+@require_license
+def live_feed():
+    status = get_monitor().get_status()
+    alerts_file = os.environ.get("CIS_ALERTS_FILE", os.path.join(os.environ.get("TEMP", "/tmp"), "cis_alerts.jsonl"))
+    alerts_list = []
+    if os.path.exists(alerts_file):
+        with open(alerts_file, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    alerts_list.append(annotate_alert(json.loads(line)))
+    telemetry_file = os.environ.get("CIS_TELEMETRY_STORAGE_PATH", os.path.join(os.environ.get("TEMP", "/tmp"), "cis_live_events.jsonl"))
+    events = []
+    if os.path.exists(telemetry_file):
+        with open(telemetry_file, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    events.append(json.loads(line))
+    return jsonify({
+        "status": status,
+        "alerts": alerts_list[-10:],
+        "telemetry": events[-10:],
+    })
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -757,7 +798,7 @@ DASHBOARD_TEMPLATE = '''
                 item.className = 'alert-item';
                 item.innerHTML = `
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div><strong>${alert.process_name || alert.event || 'Alert'}</strong></div>
+                        <div><strong>${alert.process_name || alert.rule_name || alert.event || 'Alert'}</strong></div>
                         <span class="alert-severity ${severityClass}">${severity}</span>
                     </div>
                     <div><small>${alert.explanation?.summary || alert.actionable?.what_happened || 'No explanation'}</small></div>
@@ -767,31 +808,22 @@ DASHBOARD_TEMPLATE = '''
             });
         }
 
-        async function refreshStatus() {
+        async function refreshLiveFeed() {
             try {
-                const res = await fetch('/status');
-                const status = await res.json();
+                const res = await fetch('/live-feed');
+                const payload = await res.json();
+                const status = payload.status || {};
+                const alerts = payload.alerts || [];
                 updateStatusDisplay(status);
                 addStatusPoint(status);
-            } catch (err) {
-                console.error('Status refresh failed', err);
-            }
-        }
-
-        async function refreshAlerts() {
-            try {
-                const res = await fetch('/alerts-json');
-                const alerts = await res.json();
                 renderAlerts(alerts);
             } catch (err) {
-                console.error('Alerts refresh failed', err);
+                console.error('Live feed refresh failed', err);
             }
         }
 
-        refreshStatus();
-        refreshAlerts();
-        setInterval(refreshStatus, 2000);
-        setInterval(refreshAlerts, 3000);
+        refreshLiveFeed();
+        setInterval(refreshLiveFeed, 3000);
     </script>
 </body>
 </html>

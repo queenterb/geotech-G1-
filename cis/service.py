@@ -8,8 +8,31 @@ from .run_portal import create_app
 
 
 def build_service_config() -> dict:
-    config_path = os.environ.get("CIS_CONFIG_PATH", "cis/config.example.json")
-    config = load_config(config_path if os.path.exists(config_path) else None)
+    preferred_paths = []
+    explicit_path = os.environ.get("CIS_CONFIG_PATH")
+    if explicit_path:
+        preferred_paths.append(explicit_path)
+
+    for candidate in [
+        os.path.join(os.getcwd(), "config.json"),
+        os.path.join(os.getcwd(), "cis", "config.json"),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json"),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "cis", "config.json"),
+        os.path.join(os.getcwd(), "config.example.json"),
+        os.path.join(os.getcwd(), "cis", "config.example.json"),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.example.json"),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "cis", "config.example.json"),
+    ]:
+        if candidate not in preferred_paths:
+            preferred_paths.append(candidate)
+
+    config_path = None
+    for candidate in preferred_paths:
+        if candidate and os.path.exists(candidate):
+            config_path = candidate
+            break
+
+    config = load_config(config_path)
 
     config["ebpf_socket_path"] = os.environ.get("CIS_EBPF_SOCKET_PATH", config.get("ebpf_socket_path"))
     config["alerts_file"] = os.environ.get("CIS_ALERTS_FILE", config.get("alerts_file"))

@@ -129,7 +129,10 @@ def register_free_trial(email: str, username: str, password: str, organization: 
             'message': 'Free trial account created successfully! You have 14 days to explore all features.'
         }
     except ValueError as e:
-        raise AuthenticationError(str(e))
+        message = str(e)
+        if 'UNIQUE constraint failed: users.email' in message or 'UNIQUE constraint failed: users.username' in message:
+            raise AuthenticationError("An account with that email or username already exists. Please use a different one.")
+        raise AuthenticationError(message)
 
 def generate_api_token(user_id: int, subscription_id: int) -> str:
     """Generate an API token for user."""

@@ -51,6 +51,27 @@ class HttpEndpointsTests(unittest.TestCase):
         data = response.get_json()
         self.assertIn("error", data)
 
+    def test_live_feed_returns_status_alerts_and_telemetry(self):
+        with self.client.session_transaction() as session:
+            session['_user_id'] = '1'
+            session['_fresh'] = True
+
+        with open(self.status_file, 'w', encoding='utf-8') as handle:
+            json.dump({'status': 'running', 'event_buffer': 12}, handle)
+
+        with open(os.environ['CIS_TELEMETRY_STORAGE_PATH'], 'w', encoding='utf-8') as handle:
+            handle.write(json.dumps({'pid': 777, 'filename': 'live.bin', 'op_type': 2}) + '\n')
+
+        with open(os.path.join(os.path.dirname(self.status_file), 'cis_alerts.jsonl'), 'w', encoding='utf-8') as handle:
+            handle.write(json.dumps({'rule_name': 'ransomware', 'timestamp': 1710000000}) + '\n')
+
+        response = self.client.get('/live-feed')
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertIn('status', data)
+        self.assertEqual(len(data['alerts']), 1)
+        self.assertEqual(len(data['telemetry']), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
